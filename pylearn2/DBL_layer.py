@@ -3,7 +3,8 @@ from pylearn2.models.maxout import *
    
 # wrapper to create stacked layers
 class param_dnn():
-    def __init__(self):        
+    def __init__(self):
+        pass        
     class param_algo():
         def __init__(self,
             num_perbatch,
@@ -16,12 +17,11 @@ class param_dnn():
             self.rate_momentum  = rate_momentum
 
     class param_model_conv():
-        def __init__(def __init__(self,
+        def __init__(self,
                  output_channels,
                  kernel_shape,
                  pool_shape,
                  pool_stride,
-                 layer_name,
                  irange = None,
                  border_mode = 'valid',
                  sparse_init = None,
@@ -40,7 +40,6 @@ class param_dnn():
             self.kernel_shape=kernel_shape
             self.pool_shape=pool_shape
             self.pool_stride=pool_stride
-            self.layer_name=layer_name
             self.irange = irange,
             self.border_mode = border_mode
             self.sparse_init = sparse_init
@@ -58,7 +57,6 @@ class param_dnn():
             self.param_type = 0
     class param_model_fc():
         def __init__(self, dim,
-                 layer_name,
                  irange = None,
                  istdev = None,
                  sparse_init = None,
@@ -75,27 +73,27 @@ class param_dnn():
                  use_abs_loss = False,
                  use_bias = True,
                  layer_type=0):
-            self.layer_name=layer_name
-            self.irange = irange,
-            self.istdev = istdev,
-            self.sparse_init = sparse_init,
-            self.sparse_stdev = sparse_stdev,
-            self.include_prob = include_prob,
-            self.init_bias = init_bias,
-            self.W_lr_scale = W_lr_scale,
-            self.b_lr_scale = b_lr_scale,
-            self.mask_weights = mask_weights,
-            self.max_row_norm = max_row_norm,
-            self.max_col_norm = max_col_norm,
-            self.softmax_columns = softmax_columns,
-            self.copy_input = copy_input,
-            self.use_abs_loss = use_abs_loss,
+            self.dim = dim
+            self.irange = irange
+            self.istdev = istdev
+            self.sparse_init = sparse_init
+            self.sparse_stdev = sparse_stdev
+            self.include_prob = include_prob
+            self.init_bias = init_bias
+            self.W_lr_scale = W_lr_scale
+            self.b_lr_scale = b_lr_scale
+            self.mask_weights = mask_weights
+            self.max_row_norm = max_row_norm
+            self.max_col_norm = max_col_norm
+            self.softmax_columns = softmax_columns
+            self.copy_input = copy_input
+            self.use_abs_loss = use_abs_loss
             self.use_bias = use_bias
             self.layer_type = layer_type
             self.param_type = 1
     class param_model_cf():
         def __init__(self, n_classes, 
-                layer_name, irange = None,
+                irange = None,
                 istdev = None,
                 sparse_init = None, 
                 W_lr_scale = None,
@@ -106,7 +104,6 @@ class param_dnn():
                 init_bias_target_marginals= None,
                 layer_type=0):
                 self.n_classes = n_classes
-                self.layer_name = layer_name
                 self.irange = irange
                 self.istdev = istdev
                 self.sparse_init = sparse_init 
@@ -120,43 +117,43 @@ class param_dnn():
                 self.param_type = 2
 
 class DBL_layers():
-    def __init__(self,*kargs):        
+    def __init__(self,layers):        
         self.layers = []
-        for param in karg:
-            if param.param_type==0:
-                self.layers.append(DBL_ConvLayers(param))
-            elif param.param_type==1:
-                self.layers.append(DBL_FcLayers(param))
-            elif param.param_type==2:
-                self.layers.append(DBL_CfLayers(param))
+        for param in layers:            
+            if param[0].param_type==0:
+                self.layers = self.layers + self.DBL_ConvLayers(param)
+            elif param[0].param_type==1:
+                self.layers = self.layers + self.DBL_FcLayers(param)
+            elif param[0].param_type==2:
+                self.layers = self.layers + self.DBL_CfLayers(param)
 
-    def DBL_ConvLayers(param):
+    def DBL_ConvLayers(self,param):
         numlayer=  len(param)
         layers = [None] * numlayer
         for i in range(numlayer):
-            if param[i].lt==0:
+            if param[i].layer_type==0:
                 layers[i] = ConvRectifiedLinear(
-                        output_channels = param[i].output_channels
-                        kernel_shape = param[i].kernel_shape
-                        pool_shape = param[i].pool_shape
-                        pool_stride = param[i].pool_stride
+                        output_channels = param[i].output_channels,
+                        kernel_shape = param[i].kernel_shape,
+                        pool_shape = param[i].pool_shape,
+                        pool_stride = param[i].pool_stride,
                         layer_name='conv'+str(i),
                         irange = param[i].irange,
-                        border_mode = param[i].border_mode
-                        sparse_init = param[i].sparse_init
-                        include_prob = param[i].include_prob
-                        init_bias = param[i].init_bias
-                        W_lr_scale = param[i].W_lr_scale
-                        b_lr_scale = param[i].b_lr_scale
-                        left_slope = param[i].left_slope
-                        max_kernel_norm = param[i].max_kernel_norm
-                        pool_type = param[i].pool_type
-                        detector_normalization = param[i].detector_normalization
-                        output_normalization = param[i].output_normalization
-                        kernel_stride = param[i].kernel_stride
+                        border_mode = param[i].border_mode,
+                        sparse_init = param[i].sparse_init,
+                        include_prob = param[i].include_prob,
+                        init_bias = param[i].init_bias,
+                        W_lr_scale = param[i].W_lr_scale,
+                        b_lr_scale = param[i].b_lr_scale,
+                        left_slope = param[i].left_slope,
+                        max_kernel_norm = param[i].max_kernel_norm,
+                        pool_type = param[i].pool_type,
+                        detector_normalization = param[i].detector_normalization,
+                        output_normalization = param[i].output_normalization,
+                        kernel_stride = param[i].kernel_stride,
                         layer_type = param[i].layer_type                
                         )
-            elif param[i].lt==1:
+            elif param[i].layer_type==1:
                 layers[i] = MaxoutConvC01B(
                         layer_name='conv'+str(i),
                         output_channels = param[i].nkernels,
@@ -168,11 +165,11 @@ class DBL_layers():
                         )            
         return layers
 
-    def DBL_FcLayers(param):
+    def DBL_FcLayers(self,param):
         numlayer=  len(param)
         layers = [None] * numlayer
         for i in range(numlayer):
-            if param[i].lt==0:
+            if param[i].layer_type==0:
                 layers[i] = Sigmoid(
                     dim = param[i].dim,
                     layer_name= 'sig'+str(i),
@@ -190,9 +187,8 @@ class DBL_layers():
                     softmax_columns = param[i].softmax_columns,
                     copy_input = param[i].copy_input,
                     use_abs_loss = param[i].use_abs_loss,
-                    use_bias = param[i].use_bias)
-                        )
-            elif param[i].lt==1:
+                    use_bias = param[i].use_bias)                        
+            elif param[i].layer_type==1:
                 layers[i] = Tanh(
                     dim = param[i].dim,
                     layer_name= 'tanh'+str(i),
@@ -210,29 +206,27 @@ class DBL_layers():
                     softmax_columns = param[i].softmax_columns,
                     copy_input = param[i].copy_input,
                     use_abs_loss = param[i].use_abs_loss,
-                    use_bias = param[i].use_bias)
-                    )            
+                    use_bias = param[i].use_bias)     
         return layers
      
-    def DBL_CfLayers(param):
+    def DBL_CfLayers(self,param):
         numlayer=  len(param)
         layers = [None] * numlayer
         for i in range(numlayer):
-            if param[i].lt==0:
-                layers[i] =  Softmax()
-                 n_classes = param[i].n_classes
-                 layer_name = 'sm'+str(i)
-                 irange = param[i].irange
-                 istdev = param[i].istdev
-                 sparse_init = param[i].sparse_init 
-                 W_lr_scale = param[i].W_lr_scale 
-                 b_lr_scale = param[i].b_lr_scale  
-                 max_row_norm = param[i].max_row_norm 
-                 no_affine = param[i].no_affine 
-                 max_col_norm = param[i].max_col_norm  
-                 init_bias_target_marginals= init_bias_target_marginals
-                 layer_type = param[i].layer_type)
-            elif param[i].lt==1:
+            if param[i].layer_type==0:
+                layers[i] =  Softmax(
+                n_classes = param[i].n_classes,
+                layer_name = 'sm'+str(i),
+                irange = param[i].irange,
+                istdev = param[i].istdev,
+                sparse_init = param[i].sparse_init, 
+                W_lr_scale = param[i].W_lr_scale,
+                b_lr_scale = param[i].b_lr_scale,  
+                max_row_norm = param[i].max_row_norm,
+                no_affine = param[i].no_affine, 
+                max_col_norm = param[i].max_col_norm  ,
+                init_bias_target_marginals= param[i].init_bias_target_marginals)
+            elif param[i].layer_type==1:
                 # svm
                 pass            
         return layers

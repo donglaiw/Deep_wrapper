@@ -22,14 +22,14 @@ class DataIO(DenseDesignMatrix):
     def __init__(self,X, y, view_converter):        
         super(DataIO, self).__init__(X=X, y=y, view_converter=view_converter)
 
-    def loadFile(self,filename=None,start= 0, stop=-1,trainindex=0):
+    def loadFile(self,filename,which_set,data_ind):
         if not os.path.exists(filename):
             print filename+" : doesn't exist"
             return None
         else:
             # pre-computed
-            X_path = filename[:filename.rfind('.')] + '.X'+str(trainindex)+'.npy'
-            Y_path = filename[:filename.rfind('.')] + '.Y'+str(trainindex)+'.npy'   
+            X_path = filename[:filename.rfind('.')] + '.X'+which_set+'.npy'
+            Y_path = filename[:filename.rfind('.')] + '.Y'+which_set+'.npy'   
             if os.path.exists(X_path):
                 X = np.load(X_path)
                 if trainindex:
@@ -37,28 +37,28 @@ class DataIO(DenseDesignMatrix):
                 else:
                     y = None
             else:            
-                X, y = self._load_data(filename, trainindex!=0)
+                X, y = self._load_data(filename, which_set!='test')
                 # default: X=(m,n), m instances of n dimensional feature
                 num = X.shape[0]            
-                if stop==-1 or stop>num:
-                    stop = num
-                print start,stop,num
-                X = X[start:stop, :]
+                if max(data_ind)>num:
+                    raise('index too big')
+                print data_ind,num
+                X = X[data_ind, :]
 
                 if not os.path.exists(X_path):
                     np.save(X_path, X)
                     print "save: "+X_path
-                    if y is not None:
-                        y = y[start:stop]
-                        np.save(Y_path, y)         
-                        print "save: "+Y_path 
+                if y is not None and not os.path.exists(Y_path):
+                    y = y[data_ind]
+                    np.save(Y_path, y)         
+                    print "save: "+Y_path 
             """
             print y[:10]
             print X[:10,:]                              
             """
             return X,y
 
-    def _load_data(self, path, expect_labels):
+    def _load_data(self, path, data_ind):
         return
     
     def label_id2arr(self,y,numclass):
@@ -84,9 +84,8 @@ class DataIO(DenseDesignMatrix):
 
 class Denoise(DataIO):    
     def __init__(self,which_set,numclass,
-            base_path = '/data/vision/billf/manifold-learning/DL/Data/icml_2013_emotions',
-            start = 0,
-            stop = -1,
+            base_path = '/data/vision/billf/manifold-learning/DL/Deep_Low/dn/voc/',
+            data_ind = None,
             preprocessor = None,
             trainindex=0,
             ishape=None,
@@ -95,25 +94,20 @@ class Denoise(DataIO):
             fit_test_preprocessor = False,                        
             flip=0
             ):
-        files = {'train': 'dn_train.mat', 'test' : 'test.csv'}
-        try:
-            filename = files[which_set]
-        except KeyError:
-            raise ValueError("Unrecognized dataset name: " + which_set)
         
-        X, y = self.loadFile(base_path + '/' + filename, start,stop,trainindex)
+        X, y = self.loadFile(base_path,which_set, data_ind)            
         view_converter = DefaultViewConverter(shape=np.append(ishape.shape,ishape.num_channels), axes=axes)
         super(Denoise, self).__init__(X=X, y=self.y, view_converter=view_converter)
 
-    def _load_data(self, path, expect_labels):        
-        import scipy.io
-        mat = scipy.io.loadmat(path)
+    def _load_data(self, path, which_set):        
+        import scipy.io        
+        mat = scipy.io.loadmat(path+'n_voc_p1.mat')
         # Discard header
         # row = reader.next()
-
-        X = np.asarray(X_list).astype('float32')
-        if expect_labels:
-            y = np.asarray(y_list)            
+        X = np.matrix.transpose(np.asarray(mat['npss']).astype('float32')/255)
+        if which_set != 'test':
+            mat = scipy.io.loadmat(path+'dn_voc_p1.mat')
+            y = np.matrix.transpose(np.asarray(mat['pss']).astype('float32')/255)
         else:
             y = None
 
@@ -122,23 +116,16 @@ class Denoise(DataIO):
 class Occ(DataIO):    
     def __init__(self,which_set,numclass,
             base_path = '/data/vision/billf/manifold-learning/DL/Data/icml_2013_emotions',
-            start = 0,
-            stop = -1,
+            data_ind = None,            
             preprocessor = None,
-            trainindex=0,
             ishape=None,
             fit_preprocessor = False,
             axes = ('b', 0, 1, 'c'),            
             fit_test_preprocessor = False,                        
             flip=0
             ):
-        files = {'train': 'occ_train.csv', 'public_test' : 'test.csv'}
-        try:
-            filename = files[which_set]
-        except KeyError:
-            raise ValueError("Unrecognized dataset name: " + which_set)
-        
-        X, y = self.loadFile(base_path + '/' + filename, start,stop,trainindex)
+
+        X, y = self.loadFile(base_path,which_set, data_ind)
         # train_index
         if flip:
             X_list_flipLR, X_list_flipUD = self.flipData(X)
@@ -152,10 +139,14 @@ class Occ(DataIO):
             preprocessor.apply(self, can_fit=fit_preprocessor)
                 
 
-    def _load_data(self, path, expect_labels):
+    def _load_data(path, which_set):
         assert path.endswith('.csv')
         # Convert the .csv file to numpy
-        csv_file = open(path, 'r')
+        if which_set=='train':
+            csv_file = open(path+'train.csv', 'r')
+        else:
+            csv_file = open(path+'test_pub.csv', 'r')
+            end
         import csv
         reader = csv.reader(csv_file)
         # Discard header
@@ -175,7 +166,7 @@ class Occ(DataIO):
             X_list.append(X_row)
 
         X = np.asarray(X_list).astype('float32')
-        if expect_labels:
+        if which_set=='train':
             y = np.asarray(y_list)            
         else:
             y = None
