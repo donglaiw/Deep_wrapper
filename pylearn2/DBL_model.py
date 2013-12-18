@@ -1,23 +1,17 @@
 from DBL_data import *
 import numpy as np
 class DBL_model(object):
-    def __init__(self,basepath,numclass,ishape,preproc=[0,0],cutoff=[-1,-1]): 
+    def __init__(self,model,algo,data_train): 
         # 1. data 
-        self.numclass = numclass
-        self.ishape = ishape
-
-    def run_model(self,model,algo,ds_train):
-        # 2. model/algo
         self.model = model
         self.algo  = algo
-        # 3. train/test
-        self.algo.setup(self.model, ds_train)
-        self.train(ds_train)        
+        self.algo.setup(self.model,data_train)
+        self.data_train = data_train
 
-    def train(self,d_train):
+    def train(self):
         while True:
             #print d_train.X.shape,d_train.y.shape
-            self.algo.train(dataset = d_train)
+            self.algo.train(self.data_train)
             self.model.monitor.report_epoch()            
             self.model.monitor()
             """

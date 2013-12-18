@@ -28,11 +28,11 @@ class DataIO(DenseDesignMatrix):
             return None
         else:
             # pre-computed
-            X_path = filename[:filename.rfind('.')] + '.X'+which_set+'.npy'
-            Y_path = filename[:filename.rfind('.')] + '.Y'+which_set+'.npy'   
+            X_path = filename + 'X'+which_set+'.npy'
+            Y_path = filename + 'Y'+which_set+'.npy'   
             if os.path.exists(X_path):
                 X = np.load(X_path)
-                if trainindex:
+                if which_set=='train':
                     y = np.load(Y_path)
                 else:
                     y = None
@@ -87,7 +87,6 @@ class Denoise(DataIO):
             base_path = '/data/vision/billf/manifold-learning/DL/Deep_Low/dn/voc/',
             data_ind = None,
             preprocessor = None,
-            trainindex=0,
             ishape=None,
             fit_preprocessor = False,
             axes = ('b', 0, 1, 'c'),            
@@ -96,8 +95,9 @@ class Denoise(DataIO):
             ):
         
         X, y = self.loadFile(base_path,which_set, data_ind)            
+        print ishape
         view_converter = DefaultViewConverter(shape=np.append(ishape.shape,ishape.num_channels), axes=axes)
-        super(Denoise, self).__init__(X=X, y=self.y, view_converter=view_converter)
+        super(Denoise, self).__init__(X=X, y=y, view_converter=view_converter)
 
     def _load_data(self, path, which_set):        
         import scipy.io        
@@ -185,7 +185,6 @@ class ICML_emotion(DataIO):
             start = 0,
             stop = -1,
             preprocessor = None,
-            trainindex=0,
             ishape=None,
             fit_preprocessor = False,
             axes = ('b', 0, 1, 'c'),            
@@ -198,7 +197,7 @@ class ICML_emotion(DataIO):
         except KeyError:
             raise ValueError("Unrecognized dataset name: " + which_set)
         
-        X, y = self.loadFile(base_path + '/' + filename, start,stop,trainindex)
+        X, y = self.loadFile(base_path + '/' + filename, start,stop)
         # train_index
         if flip:
             X_list_flipLR, X_list_flipUD = self.flipData(X)

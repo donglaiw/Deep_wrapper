@@ -22,52 +22,49 @@ class CNN_NET():
         self.p_model = p_model
         self.p_algo = p_algo
 
-    def loaddata(self,id_data):
+    def loaddata(self,id_data,ind_train,ind_valid,id_pre=0):
         """
         from pylearn2.datasets.preprocessing import GlobalContrastNormalization
         pre = GlobalContrastNormalization(sqrt_bias = 10,use_std = 1)            
         """
         pre = None
+        if id_pre == 1:
+            from pylearn2.datasets.preprocessing import GlobalContrastNormalization
+            pre = GlobalContrastNormalization(sqrt_bias = 10,use_std = 1)    
     	if id_data==0:
-    	    self.data_train = Occ('train',nclass,self.basepath,0,10000,pre,1,ishape)    
-    	    self.data_valid = Occ('train',nclass,self.basepath,10000,15000,pre,2,ishape)
+    	    self.data_train = Occ('train',self.nclass,self.basepath,ind_train,pre,self.ishape)    
+    	    self.data_valid = Occ('train',self.nclass,self.basepath,ind_valid,pre,self.ishape)
     	elif id_data==1:
-    	    data_train = ICML_emotion('train',nclass,self.basepath,0,10000,pre,1,self.ishape)    
-    	    data_valid = ICML_emotion('train',nclass,self.basepath,10000,11000,pre,2,self.ishape)    
+    	    self.data_train = ICML_emotion('train',self.nclass,self.basepath,ind_train,pre,self.ishape)    
+    	    self.data_valid = ICML_emotion('train',self.nclass,self.basepath,ind_valid,pre,self.ishape)    
         elif id_data==2:
-            np.random.seed(1)
-            rand_ind = np.random.permutation([i for i in range(100000)])
-            data_train = Denoise('train',nclass,self.basepath,rand_ind[:90000],pre,1,self.ishape)    
-            data_valid = Denoise('train',nclass,self.basepath,rand_ind[10000:],pre,2,self.ishape)    
+            self.data_train = Denoise('train',self.nclass,self.basepath,ind_train,pre,self.ishape)    
+            self.data_valid = Denoise('train',self.nclass,self.basepath,ind_valid,pre,self.ishape)    
 
-    def model(self):
+    def model(self,id_pre=0):
         # create conv layers
         layers = DBL_layers(self.p_model)      
         # print layers.layers
-        self.model = MLP(layers.layers, input_space=self.ishape)
-        self.DBL = DBL_model(self.basepath,nclass,np.append(ishape.shape,1),preproc,cutoff)    
+        model = MLP(layers.layers, input_space=self.ishape)
+        if id_pre == 1:
+            model.layers[-1].init_bias_target_marginals=self.data_train            
 
+        algo_term = EpochCounter(self.p_algo.num_epoch) # number of epoch iteration
+        algo = SGD(learning_rate = self.p_algo.rate_grad,
+                batch_size = self.p_algo.num_perbatch,
+                init_momentum = self.p_algo.rate_momentum,
+                monitoring_dataset = self.data_valid,
+                termination_criterion=algo_term
+                )   
 
-    def train(self, id_pre, cutoff=[-1,-1],preproc=[0,0],pklname='tmp.pkl'):
+        self.DBL = DBL_model(model,algo,self.data_train)
+
+    def train(self,pklname='tmp.pkl'):
         # load data
         #print data_valid.X.shape,data_valid.y.shape
         #print data_train.X.shape,data_train.y.shape
-        if id_pre == 0:
-            self.model.layers[-1].init_bias_target_marginals=self.data_train            
-        elif id_pre == 1:
-            from pylearn2.datasets.preprocessing import GlobalContrastNormalization
-            pre = GlobalContrastNormalization(sqrt_bias = 10,use_std = 1)    
-            param = param_train(500,500,0.001,0.5)
 
-
-        algo_term = EpochCounter(param.num_epoch) # number of epoch iteration
-        algo = SGD(learning_rate = param.rate_grad,
-                batch_size = param.num_perbatch,
-                init_momentum = param.rate_momentum,
-                monitoring_dataset = data_valid,
-                termination_criterion=algo_term
-                )   
-        self.DBL.run_model(self.model,algo,data_train)
+        self.DBL.train()
 
         # save the model
         if pklname!='':
@@ -116,7 +113,9 @@ if __name__ == "__main__":
 
     net = CNN_NET(DD, ishape, [[p_fc],[p_cf]],p_algo)
     
-    net.loaddata(2)
+    np.random.seed(1)
+    rand_ind = np.random.permutation([i for i in range(100000)])
+    net.loaddata(2,rand_ind[:90000],rand_ind[90000:])
     net.model()
     net.train()
     #net.test()
