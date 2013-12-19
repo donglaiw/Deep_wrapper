@@ -106,7 +106,7 @@ class Denoise(DataIO):
         # row = reader.next()
         X = np.matrix.transpose(np.asarray(mat['npss']).astype('float32')/255)
         if which_set != 'test':
-            mat = scipy.io.loadmat(path+'dn_voc_p1.mat')
+            mat = scipy.io.loadmat(path+'c_voc_p1.mat')
             y = np.matrix.transpose(np.asarray(mat['pss']).astype('float32')/255)
         else:
             y = None
