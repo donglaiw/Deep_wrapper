@@ -1,17 +1,55 @@
-from DBL_data import *
+from DBL_util import *
 import numpy as np
+from pylearn2.models.mlp import MLP
+from pylearn2.training_algorithms.sgd import SGD
+from DBL_layer import DBL_ConvLayers,DBL_FcLayers,DBL_CfLayers
+
 class DBL_model(object):
-    def __init__(self,model,algo,data_train): 
+    def __init__(self,ishape,p_layers,p_algo,data): 
         # 1. data 
-        self.model = model
-        self.algo  = algo
-        self.algo.setup(self.model,data_train)
-        self.data_train = data_train
+        self.data = data
+        self.setup_layer(p_layers,ishape)        
+        self.setup_algo(p_algo)
+
+    
+
+    def setup_layer(self,p_layers,ishape):    
+        # setup layer
+        layers = []
+        for param in p_layers:            
+            if param[0].param_type==0:
+                layers = layers + DBL_ConvLayers(param)
+            elif param[0].param_type==1:
+                layers = layers + DBL_FcLayers(param)
+            elif param[0].param_type==2:
+                layers = layers + DBL_CfLayers(param)        
+        self.model = MLP(layers, input_space=ishape)
+
+    def setup_algo(self,p_algo):
+        # setup algo
+        self.algo =  SGD(learning_rate = p_algo.learning_rate,
+        cost = p_algo.cost,
+        batch_size = p_algo.batch_size,
+        monitoring_batches = p_algo.monitoring_batches,
+        monitoring_dataset = self.data['valid'],
+        monitor_iteration_mode = p_algo.monitor_iteration_mode,
+        termination_criterion = p_algo.termination_criterion,
+        update_callbacks = p_algo.update_callbacks,
+        learning_rule = p_algo.learning_rule,
+        init_momentum = p_algo.init_momentum,
+        set_batch_size = p_algo.set_batch_size,
+        train_iteration_mode = p_algo.train_iteration_mode,
+        batches_per_iter = p_algo.batches_per_iter,
+        theano_function_mode = p_algo.theano_function_mode,
+        monitoring_costs = p_algo.monitoring_costs,
+        seed = p_algo.seed)
+        self.algo.setup(self.model, self.data['train'])
+
 
     def train(self):
         while True:
             #print d_train.X.shape,d_train.y.shape
-            self.algo.train(self.data_train)
+            self.algo.train(self.data['train'])
             self.model.monitor.report_epoch()            
             self.model.monitor()
             """

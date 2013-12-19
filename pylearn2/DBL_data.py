@@ -95,7 +95,6 @@ class Denoise(DataIO):
             ):
         
         X, y = self.loadFile(base_path,which_set, data_ind)            
-        print ishape
         view_converter = DefaultViewConverter(shape=np.append(ishape.shape,ishape.num_channels), axes=axes)
         super(Denoise, self).__init__(X=X, y=y, view_converter=view_converter)
 
