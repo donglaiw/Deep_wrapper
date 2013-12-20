@@ -143,7 +143,7 @@ class Denoise(DataIO):
             mat = scipy.io.loadmat(file_path+self.options['data'])
             X = np.zeros(( 0, np.prod(self.ishape)), dtype = np.float32)
             y = np.zeros(( 0, np.prod(self.ishape)), dtype = np.float32)
-            for i in len(mat['Is'][0]):
+            for i in range(len(mat['Is'][0])):
                 tmp_x = self.patchify(mat['Ins'][0][0],self.ishape[:2])
                 tmp_sz = tmp_x.shape
                 X = np.vstack((X,np.reshape(tmp_x,(tmp_sz[0]*tmp_sz[1],tmp_sz[2]*tmp_sz[3]))))
