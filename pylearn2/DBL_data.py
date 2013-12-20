@@ -62,12 +62,25 @@ class DataIO(DenseDesignMatrix):
 
     def _load_data(self, file_path, data_id, data_ind, which_set):
         return
-    
+    def _load_npy():
+        pass
+
     def label_id2arr(self,y,numclass):
         one_hot = np.zeros((y.shape[0],numclass),dtype='float32')
         for i in xrange(y.shape[0]):
             one_hot[i,y[i]] = 1.
         return one_hot
+    def patchify(self,img, patch_shape):
+        img = np.ascontiguousarray(img)  # won't make a copy if not needed
+        X, Y = img.shape
+        x, y = patch_shape
+        shape = ((X-x+1), (Y-y+1), x, y) # number of patches, patch_shape
+        # The right strides can be thought by:
+        # 1) Thinking of `img` as a chunk of memory in C order
+        # 2) Asking how many items through that chunk of memory are needed when indices
+        #    i,j,k,l are incremented by one
+        strides = img.itemsize*np.array([Y, 1, Y, 1])
+        return np.lib.stride_tricks.as_strided(img, shape=shape, strides=strides)
 
     def flipData(self, sampleList, sizeImg = [48, 48]):
             # flip the image set from left to right, and upside down
@@ -101,7 +114,8 @@ class Denoise(DataIO):
         X, y = self.loadFile(base_path,which_set, data_id, data_ind)            
         
         if data_id <=1:
-            view_converter = DefaultViewConverter(shape = (17,17,1), axes=axes)            
+            self.ishape = (17,17,1)
+        view_converter = DefaultViewConverter(shape = self.ishape, axes=axes)            
         super(Denoise, self).__init__(X=X, y=y, view_converter=view_converter)
 
     def _load_data(self, file_path, data_id, which_set):        
@@ -119,8 +133,20 @@ class Denoise(DataIO):
         elif data_id==1:
             # test for one image
             mat = scipy.io.loadmat(file_path+self.options['data'])
-            X = np.matrix.transpose(np.asarray(mat['nps']).astype('float32')/255)
-            y = np.matrix.transpose(np.asarray(mat['ps']).astype('float32')/255)            
+            X = np.asarray(mat['nps']).astype('float32').T/255
+            y = np.asarray(mat['ps']).astype('float32').T/255
+        elif data_id==2:
+            # test for BSD
+            mat = scipy.io.loadmat(file_path+self.options['data'])
+            X = np.zeros(( 0, np.prod(self.ishape)), dtype = np.float32)
+            y = np.zeros(( 0, np.prod(self.ishape)), dtype = np.float32)
+            for i in len(mat['im'][0]):
+                tmp_x = self.patchify(mat['Ins'][0][0],self.ishape[:2])
+                tmp_sz = tmp_x.shape
+                X = np.vstack((X,np.reshape(tmp_x,(tmp_sz[0]*tmp_sz[1],tmp_sz[2]*tmp_sz[3]))))
+                tmp_x = self.patchify(mat['Is'][0][0],self.ishape[:2])
+                tmp_sz = tmp_x.shape
+                y = np.vstack((X,np.reshape(tmp_x,(tmp_sz[0]*tmp_sz[1],tmp_sz[2]*tmp_sz[3]))))
         return X, y
 
 class Occ(DataIO):    
