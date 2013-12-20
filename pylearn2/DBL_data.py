@@ -110,13 +110,13 @@ class Denoise(DataIO):
             data_id = 0
         else:
             data_id = options['data_id'];
-
-        X, y = self.loadFile(base_path,which_set, data_id, data_ind)            
-        
-        print data_id
+	print data_id
         if data_id <=2:
             self.ishape = (17,17,1)
 
+        X, y = self.loadFile(base_path,which_set, data_id, data_ind)            
+        
+        
         view_converter = DefaultViewConverter(shape = self.ishape, axes=axes)            
         super(Denoise, self).__init__(X=X, y=y, view_converter=view_converter)
 
