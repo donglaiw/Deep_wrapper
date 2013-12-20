@@ -110,12 +110,11 @@ class Denoise(DataIO):
             data_id = 0
         else:
             data_id = options['data_id'];
-
-        X, y = self.loadFile(base_path,which_set, data_id, data_ind)            
         
-        print data_id
         if data_id <=2:
             self.ishape = (17,17,1)
+        X, y = self.loadFile(base_path,which_set, data_id, data_ind)            
+
 
         view_converter = DefaultViewConverter(shape = self.ishape, axes=axes)            
         super(Denoise, self).__init__(X=X, y=y, view_converter=view_converter)
@@ -142,7 +141,7 @@ class Denoise(DataIO):
             mat = scipy.io.loadmat(file_path+self.options['data'])
             X = np.zeros(( 0, np.prod(self.ishape)), dtype = np.float32)
             y = np.zeros(( 0, np.prod(self.ishape)), dtype = np.float32)
-            for i in len(mat['im'][0]):
+            for i in len(mat['Is'][0]):
                 tmp_x = self.patchify(mat['Ins'][0][0],self.ishape[:2])
                 tmp_sz = tmp_x.shape
                 X = np.vstack((X,np.reshape(tmp_x,(tmp_sz[0]*tmp_sz[1],tmp_sz[2]*tmp_sz[3]))))
