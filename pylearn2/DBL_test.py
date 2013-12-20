@@ -57,7 +57,7 @@ class CNN_NET():
         # save the model
         if pklname!='':
             layer_params = []
-            for layer in layers:
+            for layer in self.DBL.layers:
                 param = layer.get_params()      
                 print param
                 print param[0].get_value()
@@ -82,7 +82,6 @@ class CNN_NET():
             
             layer_id = layer_id + 1
         
-        DBL.model = model                        
 
 if __name__ == "__main__": 
 	# e.g. denoising 

@@ -23,6 +23,7 @@ class DBL_model(object):
                 layers = layers + DBL_FcLayers(param)
             elif param[0].param_type==2:
                 layers = layers + DBL_CfLayers(param)        
+        self.layers = layers
         self.model = MLP(layers, input_space=ishape)
 
     def setup_algo(self,p_algo):
