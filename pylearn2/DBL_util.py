@@ -35,7 +35,7 @@ class SetParam():
             self.batches_per_iter = batches_per_iter
             self.theano_function_mode = theano_function_mode
             self.monitoring_costs = monitoring_costs
-            self.seed=[2012, 10, 5]
+            self.seed = seed
     class param_model_conv():
         def __init__(self,
                  output_channels,

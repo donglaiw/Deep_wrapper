@@ -22,34 +22,36 @@ class DataIO(DenseDesignMatrix):
     def __init__(self,X, y, view_converter):        
         super(DataIO, self).__init__(X=X, y=y, view_converter=view_converter)
 
-    def loadFile(self,filename,which_set,data_ind):
-        if not os.path.exists(filename):
-            print filename+" : doesn't exist"
+    def loadFile(self,file_path,which_set,data_id, data_ind):
+        if not os.path.exists(file_path):
+            print file_path+" : doesn't exist"
             return None
         else:
             # pre-computed
-            X_path = filename + 'X'+which_set+'.npy'
-            Y_path = filename + 'Y'+which_set+'.npy'   
+            X_path = file_path + 'X'+which_set+str(data_id)+'.npy'
+            Y_path = file_path + 'Y'+which_set+str(data_id)+'.npy'   
+             
             if os.path.exists(X_path):
                 X = np.load(X_path)
-                if which_set=='train':
+                y = None
+                if os.path.exists(Y_path):
                     y = np.load(Y_path)
-                else:
-                    y = None
             else:            
-                X, y = self._load_data(filename, which_set!='test')
+                X, y = self._load_data(file_path, data_id, which_set)
                 # default: X=(m,n), m instances of n dimensional feature
-                num = X.shape[0]            
-                if max(data_ind)>num:
-                    raise('index too big')
-                print data_ind,num
-                X = X[data_ind, :]
+                if data_ind!=None:
+                    num = X.shape[0]            
+                    if max(data_ind)>num:
+                        raise('index too big')
+                    # print data_ind,num
+                    X = X[data_ind, :]
 
                 if not os.path.exists(X_path):
                     np.save(X_path, X)
                     print "save: "+X_path
                 if y is not None and not os.path.exists(Y_path):
-                    y = y[data_ind]
+                    if data_ind!=None:
+                        y = y[data_ind]
                     np.save(Y_path, y)         
                     print "save: "+Y_path 
             """
@@ -58,7 +60,7 @@ class DataIO(DenseDesignMatrix):
             """
             return X,y
 
-    def _load_data(self, path, data_ind):
+    def _load_data(self, file_path, data_id, data_ind, which_set):
         return
     
     def label_id2arr(self,y,numclass):
@@ -83,41 +85,49 @@ class DataIO(DenseDesignMatrix):
             return sampleList_LR, sampleList_UD
 
 class Denoise(DataIO):    
-    def __init__(self,which_set,numclass,
-            base_path = '/data/vision/billf/manifold-learning/DL/Deep_Low/dn/voc/',
-            data_ind = None,
-            preprocessor = None,
-            ishape=None,
-            fit_preprocessor = False,
-            axes = ('b', 0, 1, 'c'),            
-            fit_test_preprocessor = False,                        
-            flip=0
+    def __init__(self,which_set,
+            base_path = '/data/vision/billf/manifold-learning/DL/Deep_Low/dn/voc/',            
+            data_ind = None,   
+            options = None,
+            axes = ('b', 0, 1, 'c'),                                    
             ):
+        self.options = options
         
-        X, y = self.loadFile(base_path,which_set, data_ind)            
-        view_converter = DefaultViewConverter(shape=np.append(ishape.shape,ishape.num_channels), axes=axes)
+        if options==None:
+            data_id = 0
+        else:
+            data_id = options['data_id'];
+
+        X, y = self.loadFile(base_path,which_set, data_id, data_ind)            
+        
+        if data_id <=1:
+            view_converter = DefaultViewConverter(shape = (17,17,1), axes=axes)            
         super(Denoise, self).__init__(X=X, y=y, view_converter=view_converter)
 
-    def _load_data(self, path, which_set):        
+    def _load_data(self, file_path, data_id, which_set):        
         import scipy.io        
-        mat = scipy.io.loadmat(path+'n_voc_p1.mat')
-        # Discard header
-        # row = reader.next()
-        X = np.matrix.transpose(np.asarray(mat['npss']).astype('float32')/255)
-        if which_set != 'test':
-            mat = scipy.io.loadmat(path+'c_voc_p1.mat')
-            y = np.matrix.transpose(np.asarray(mat['pss']).astype('float32')/255)
-        else:
-            y = None
-
+        if data_id ==0:
+            mat = scipy.io.loadmat(file_path+'n_voc_p1.mat')
+            # Discard header
+            # row = reader.next()
+            X = np.matrix.transpose(np.asarray(mat['npss']).astype('float32')/255)
+            if which_set != 'test':
+                mat = scipy.io.loadmat(file_path+'c_voc_p1.mat')
+                y = np.matrix.transpose(np.asarray(mat['pss']).astype('float32')/255)
+            else:
+                y = None
+        elif data_id==1:
+            # test for one image
+            mat = scipy.io.loadmat(file_path+self.options['data'])
+            X = np.matrix.transpose(np.asarray(mat['nps']).astype('float32')/255)
+            y = np.matrix.transpose(np.asarray(mat['ps']).astype('float32')/255)            
         return X, y
 
 class Occ(DataIO):    
     def __init__(self,which_set,numclass,
             base_path = '/data/vision/billf/manifold-learning/DL/Data/icml_2013_emotions',
             data_ind = None,            
-            preprocessor = None,
-            ishape=None,
+            preprocessor = None,            
             fit_preprocessor = False,
             axes = ('b', 0, 1, 'c'),            
             fit_test_preprocessor = False,                        
@@ -136,42 +146,13 @@ class Occ(DataIO):
 
         if preprocessor:
             preprocessor.apply(self, can_fit=fit_preprocessor)
-                
+        """
+        from pylearn2.datasets.preprocessing import GlobalContrastNormalization
+        pre = GlobalContrastNormalization(sqrt_bias = 10,use_std = 1)            
+        """                
 
-    def _load_data(path, which_set):
-        assert path.endswith('.csv')
-        # Convert the .csv file to numpy
-        if which_set=='train':
-            csv_file = open(path+'train.csv', 'r')
-        else:
-            csv_file = open(path+'test_pub.csv', 'r')
-            end
-        import csv
-        reader = csv.reader(csv_file)
-        # Discard header
-        # row = reader.next()
-        y_list = []
-        X_list = []
-        for row in reader:
-            row = row[0]
-            if expect_labels:                
-                y = int(row[:row.find(' ')])
-                y_list.append(y)
-                X_row_str = row[row.find(' ')+1:]
-            else:
-                X_row_str ,= row
-            X_row_strs = X_row_str.split(' ')
-            X_row = map(lambda x: float(x), X_row_strs)
-            X_list.append(X_row)
-
-        X = np.asarray(X_list).astype('float32')
-        if which_set=='train':
-            y = np.asarray(y_list)            
-        else:
-            y = None
-
-        return X, y
-
+    def _load_data(path, which_set):     
+        pass
 
 class ICML_emotion(DataIO):
     """
@@ -183,30 +164,30 @@ class ICML_emotion(DataIO):
             base_path = '/data/vision/billf/manifold-learning/DL/Data/icml_2013_emotions',
             start = 0,
             stop = -1,
-            preprocessor = None,
-            ishape=None,
-            fit_preprocessor = False,
+            options = [0],
             axes = ('b', 0, 1, 'c'),            
-            fit_test_preprocessor = False,                        
-            flip=0
+            fit_test_preprocessor = False,                                    
             ):
         files = {'train': 'train.csv', 'public_test' : 'test.csv'}
         try:
-            filename = files[which_set]
+            file_path = files[which_set]
         except KeyError:
             raise ValueError("Unrecognized dataset name: " + which_set)
         
-        X, y = self.loadFile(base_path + '/' + filename, start,stop)
+        X, y = self.loadFile(base_path + '/' + file_path, start,stop)
         # train_index
         if flip:
             X_list_flipLR, X_list_flipUD = self.flipData(X)
             X = X + X_list_flipLR
             y = y + y    
 
-        view_converter = DefaultViewConverter(shape=np.append(ishape.shape,ishape.num_channels), axes=axes)
+        view_converter = DefaultViewConverter(shape=(48,48,1), axes=axes)
         super(ICML_emotion, self).__init__(X=X, y=self.label_id2arr(y,numclass), view_converter=view_converter)
-
-        if preprocessor:
+                
+        if options[0] == 1:
+            fit_preprocessor = False
+            from pylearn2.datasets.preprocessing import GlobalContrastNormalization
+            preprocessor = GlobalContrastNormalization(sqrt_bias = 10,use_std = 1)            
             preprocessor.apply(self, can_fit=fit_preprocessor)
 
     def _load_data(self, path, expect_labels):
@@ -237,3 +218,16 @@ class ICML_emotion(DataIO):
             y = None
         return X, y
             
+class DBL_Data():
+    def __init__(self,dataset_id):
+        self.data={'train':None,'valid':None,'test':None}
+        self.dataset_id = dataset_id
+
+    def loadData(self,basepath,which_set,data_ind=None,options=None):        
+        assert which_set in ['train','valid','test']
+        if self.dataset_id==0:            
+            self.data[which_set] = Occ(which_set,basepath,data_ind,options)            
+        elif self.dataset_id==1:
+            self.data[which_set] = ICML_emotion(which_set,basepath,data_ind,options)                
+        elif self.dataset_id==2:            
+            self.data[which_set] = Denoise(which_set,basepath,data_ind,options)                
