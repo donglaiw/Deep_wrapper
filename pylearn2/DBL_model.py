@@ -84,8 +84,8 @@ class DBL_model(object):
         while True:
             #print d_train.X.shape,d_train.y.shape
             self.algo.train(self.DataLoader.data['train'])
-            self.model.monitor.report_epoch()            
-            self.model.monitor()
+            #self.model.monitor.report_epoch()            
+            #self.model.monitor()
             """
             # hack the monitor
             print "monior:\n"
@@ -135,16 +135,18 @@ class DBL_model(object):
         yhat = yhat[:m]
         data_test.X = data_test.X[:m,:]
         y = data_test.y
-        if metric == 0:
-            if data_test.y.ndim>1:
-                y = np.argmax(data_test.y,axis=1)
-            assert len(y)==len(yhat)
-            acc = float(np.sum(y-yhat==0))/y.size
-        elif metric == 1:
-            acc = float(np.sum(abs(y-yhat)))/y.size
-        elif metric == 2: 
-            acc = float(np.sum((y-yhat)**2))/y.size
-        
-        return [[y],[acc]]
+        acc = -1
+        if y != None:
+            if metric == 0:
+                if data_test.y.ndim>1:
+                    y = np.argmax(data_test.y,axis=1)
+                assert len(y)==len(yhat)
+                acc = float(np.sum(y-yhat==0))/y.size
+            elif metric == 1:
+                acc = float(np.sum(abs(y-yhat)))/y.size
+            elif metric == 2: 
+                acc = float(np.sum((y-yhat)**2))/y.size
+            
+        return [[yhat],[acc]]
 
 

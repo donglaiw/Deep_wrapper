@@ -141,6 +141,14 @@ class Denoise(DataIO):
         elif data_id==2:
             # test for BSD
             mat = scipy.io.loadmat(file_path+self.options['data'])
+            im_id  = self.options['im_id']
+            tmp_x = self.patchify(mat['Ins'][0][im_id],self.ishape[:2])
+            tmp_sz = tmp_x.shape
+            X = np.reshape(tmp_x,(tmp_sz[0]*tmp_sz[1],tmp_sz[2]*tmp_sz[3]))
+            y = None
+
+            """
+            # out of gpu memory
             X = np.zeros(( 0, np.prod(self.ishape)), dtype = np.float32)
             y = np.zeros(( 0, np.prod(self.ishape)), dtype = np.float32)
             for i in range(len(mat['Is'][0])):
@@ -150,6 +158,7 @@ class Denoise(DataIO):
                 tmp_x = self.patchify(mat['Is'][0][0],self.ishape[:2])
                 tmp_sz = tmp_x.shape
                 y = np.vstack((X,np.reshape(tmp_x,(tmp_sz[0]*tmp_sz[1],tmp_sz[2]*tmp_sz[3]))))
+            """
         return X, y
 
 class Occ(DataIO):    
