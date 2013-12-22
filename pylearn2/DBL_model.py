@@ -3,8 +3,10 @@ import numpy as np
 from pylearn2.models.mlp import MLP
 from pylearn2.training_algorithms.sgd import SGD
 from DBL_layer import DBL_ConvLayers,DBL_FcLayers,DBL_CfLayers
-from DBL_util import *
+from DBL_util import trainMonitor
 from DBL_data import DBL_Data
+import scipy.io
+
 
 class DBL_model(object):
     def __init__(self,ishape,p_layers,p_data): 
@@ -16,20 +18,30 @@ class DBL_model(object):
     def loadData(self,basepath,which_set,data_ind=None,options=None):
         self.DataLoader.loadData(basepath,which_set,data_ind,options)
             
-    def loadWeight(self, pklname):
+    def loadWeight(self, fname):
          # create DBL_model          
         # load and rebuild model
-        layer_params = cPickle.load(open(pklname))
+        if fname[-3:] == 'pkl':
+            layer_params = cPickle.load(open(fname))
+        elif fname[-3:] == 'mat':
+            mat = scipy.io.loadmat(fname)            
+            layer_params = mat['param']            
+        else:
+            raise('cannot recognize: '+fname)
+
         layer_id = 0
         num_layers = len(self.model.layers)
         for layer in self.model.layers:
-            if layer_params[layer_id][0].ndim==2:
+            # squeeze for matlab structure
+            if np.squeeze(layer_params[layer_id][0]).ndim==2:
                 layer.set_weights(layer_params[layer_id][0])
-                layer.set_biases(layer_params[layer_id][1])
+                layer.set_biases(np.squeeze(layer_params[layer_id][1]))
+                #tmp = np.squeeze(layer_params[layer_id][1])                
             else:
                 layer.set_weights(layer_params[layer_id][1])
-                layer.set_biases(layer_params[layer_id][0])
-            
+                layer.set_biases(np.squeeze(layer_params[layer_id][0]))
+                #tmp = np.squeeze(layer_params[layer_id][0])
+            #print "sss:",tmp[:10]
             layer_id = layer_id + 1                            
 
     def saveWeight(self,pklname):                
@@ -65,6 +77,7 @@ class DBL_model(object):
         monitoring_batches = p_algo.monitoring_batches,
         #monitoring_dataset = {'valid':self.DataLoader.data['valid']},
         monitoring_dataset = self.DataLoader.data,
+        #monitoring_dataset = {'valid':self.DataLoader.data['valid'],'train':self.DataLoader.data['train']},
         monitor_iteration_mode = p_algo.monitor_iteration_mode,
         termination_criterion = p_algo.termination_criterion,
         update_callbacks = p_algo.update_callbacks,
@@ -78,21 +91,14 @@ class DBL_model(object):
         seed = p_algo.seed)
         self.algo.setup(self.model, self.DataLoader.data['train'])
 
-
-    def train(self,p_algo):        
+    def train(self,p_algo,p_monitor):        
         self.loadParam_algo(p_algo)
-        while True:
-            #print d_train.X.shape,d_train.y.shape
-            self.algo.train(self.DataLoader.data['train'])
-            #self.model.monitor.report_epoch()            
-            #self.model.monitor()
-            """
-            # hack the monitor
-            print "monior:\n"
-            self.test(self.ds_valid)
-            """
-            if not self.algo.continue_learning(self.model):
-                break    
+        self.train_monitor = trainMonitor(self.model.monitor,p_monitor)
+        #self.model.monitor.report_epoch()            
+        while self.algo.continue_learning(self.model):
+            self.train_monitor.run()
+            self.algo.train(self.DataLoader.data['train'])            
+            #self.model.monitor()            
 
     def test(self,batch_size,metric=0):
         """
@@ -115,7 +121,13 @@ class DBL_model(object):
             assert data_test.X.shape[0] % batch_size == 0
         X = self.model.get_input_space().make_batch_theano()
         Y = self.model.fprop(X)
-        
+        """
+        print 'load param:'
+        param = self.model.layers[0].get_params()
+        aa = param[0].get_value()
+        bb = param[1].get_value()
+        print aa[:3,:3],bb[:10]   
+        """
         from theano import function
         if metric==0:
             from theano import tensor as T
@@ -141,11 +153,14 @@ class DBL_model(object):
                 if data_test.y.ndim>1:
                     y = np.argmax(data_test.y,axis=1)
                 assert len(y)==len(yhat)
-                acc = float(np.sum(y-yhat==0))/y.size
+                acc = float(np.sum(y-yhat==0))/m
             elif metric == 1:
-                acc = float(np.sum(abs(y-yhat)))/y.size
+                acc = float(np.sum(abs(y-yhat)))/m
             elif metric == 2: 
-                acc = float(np.sum((y-yhat)**2))/y.size
+                #print y.shape,yhat.shape,float(np.sum((y-yhat)**2)),y.size
+                #print y[:,0]
+                #print yhat[:,0]
+                acc = float(np.sum((y-yhat)**2))/m
             
         return [[yhat],[acc]]
 

@@ -115,14 +115,13 @@ class Denoise(DataIO):
             self.ishape = (17,17,1)
         X, y = self.loadFile(base_path,which_set, data_id, data_ind)            
 
-
         
         
         view_converter = DefaultViewConverter(shape = self.ishape, axes=axes)            
         super(Denoise, self).__init__(X=X, y=y, view_converter=view_converter)
 
     def _load_data(self, file_path, data_id, which_set):        
-        import scipy.io        
+        import scipy.io     
         if data_id ==0:
             mat = scipy.io.loadmat(file_path+'n_voc_p1.mat')
             # Discard header
@@ -258,7 +257,8 @@ class ICML_emotion(DataIO):
             
 class DBL_Data():
     def __init__(self,dataset_id):
-        self.data={'train':None,'valid':None,'test':None}
+        #self.data={'train':None,'valid':None,'test':None}
+        self.data={}
         self.dataset_id = dataset_id
 
     def loadData(self,basepath,which_set,data_ind=None,options=None):        
