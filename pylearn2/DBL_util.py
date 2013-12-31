@@ -34,7 +34,8 @@ class paramSet():
             batches_per_iter=None,
             theano_function_mode = None, 
             monitoring_costs=None,
-            seed=[2012, 10, 5]):
+            seed=[2012, 10, 5],
+            algo_type = 0):
             self.learning_rate = learning_rate
             self.cost = cost
             self.batch_size = batch_size
@@ -51,6 +52,7 @@ class paramSet():
             self.theano_function_mode = theano_function_mode
             self.monitoring_costs = monitoring_costs
             self.seed = seed
+            self.algo_type = algo_type
     class param_model_conv():
         def __init__(self,
                  output_channels,
@@ -167,12 +169,14 @@ class trainMonitor():
                     if prereq not in prereqs:
                         prereqs.append(prereq)
                 
-        self.p_monitor = p_monitor                        
-        
+        self.p_channel = p_monitor['channel']        
+        self.p_save = p_monitor['save'] if 'save' in p_monitor else None
+        self.monitor._epochs_seen = p_monitor['epoch']
+         
         """
         # screw up theano args
         for channel in self.monitor.channels.keys():
-            if channel not in p_monitor:
+            if channel not in p_channel:
                 del self.monitor.channels[channel]
         """
     
@@ -221,7 +225,7 @@ class trainMonitor():
 
         #for i, channel in enumerate(mm.channels.values()):
         for i, dw_name in enumerate(mm.channels.keys()):            
-            if dw_name in self.p_monitor:
+            if dw_name in self.p_channel:
                 channel = mm.channels[dw_name]
                 
                 index = mm._datasets.index(channel.dataset)
@@ -326,14 +330,16 @@ class trainMonitor():
                             "it had " + str(ne) + " examples total, but at "
                             "runtime it gave us " + str(actual_ne) + ".")
         # end for d
-
+        if self.p_save != None:
+            b= open(self.p_save,'a')
+            b.write("\tEpochs seen: %d\n" % mm._epochs_seen)
         print("Monitoring step:")
         print("\tEpochs seen: %d" % mm._epochs_seen)
         print("\tBatches seen: %d" % mm._num_batches_seen)
-        print("\tExamples seen: %d" % mm._examples_seen)
+        #print("\tExamples seen: %d" % mm._examples_seen)
         t = time.time() - mm.t0
         #print mm.channels
-        for channel_name in self.p_monitor:                
+        for channel_name in self.p_channel:                
             if channel_name in mm.channels:
                 channel = mm.channels[channel_name]
                 channel.time_record.append(t)
@@ -348,8 +354,11 @@ class trainMonitor():
                     val_str = str(val)
                 else:
                     val_str = '%.3e' % val
-                print "\t%s: %s" % (channel_name, val_str)                    
+                print "\t%s: %s" % (channel_name, val_str)
+                if self.p_save!=None:
+                    b.write("\t%s: %s\n" % (channel_name, val_str)) 
         # clean up        
-        
+        if self.p_save!=None:
+            b.close() 
         mm._epochs_seen += 1
 

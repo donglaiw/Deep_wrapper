@@ -37,14 +37,18 @@ class DataIO(DenseDesignMatrix):
                 if os.path.exists(Y_path):
                     y = np.load(Y_path)
             else:            
+                #print "do it"
                 X, y = self._load_data(file_path, data_id, which_set)
+                #print "done"
                 # default: X=(m,n), m instances of n dimensional feature
+                #print "start_save",len(data_ind),X.shape,y.shape
                 if data_ind!=None:
                     num = X.shape[0]            
                     if max(data_ind)>num:
                         raise('index too big')
                     # print data_ind,num
                     X = X[data_ind, :]
+                #print "after cut",len(data_ind),X.shape
 
                 if not os.path.exists(X_path):
                     np.save(X_path, X)
@@ -122,10 +126,21 @@ class Denoise(DataIO):
 
     def _load_data(self, file_path, data_id, which_set):        
         import scipy.io     
-        if data_id ==0:
+        if data_id ==-1:
+            X = np.zeros(( 0, np.prod(self.ishape)), dtype = np.float32)
+            mat_id = self.options['mat_id']
+            for i in mat_id:
+                mat = scipy.io.loadmat(file_path+'n_voc_p'+str(i)+'.mat')
+                #print i,mat['npss'].shape
+                X = np.vstack((X,(np.asarray(mat['npss']).T.astype('float32')/255-0.5)/0.2))
+            if which_set != 'test':
+                y = np.zeros(( 0, np.prod(self.ishape)), dtype = np.float32)
+                for i in mat_id:
+                    mat = scipy.io.loadmat(file_path+'c_voc_p1.mat')
+                    #print i,mat['pss'].shape
+                    y = np.vstack((y,(np.asarray(mat['pss']).T.astype('float32')/255-0.5)/0.2))
+        elif data_id ==0:
             mat = scipy.io.loadmat(file_path+'n_voc_p1.mat')
-            # Discard header
-            # row = reader.next()
             X = np.matrix.transpose(np.asarray(mat['npss']).astype('float32')/255)
             if which_set != 'test':
                 mat = scipy.io.loadmat(file_path+'c_voc_p1.mat')

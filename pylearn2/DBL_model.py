@@ -2,6 +2,7 @@ import cPickle
 import numpy as np
 from pylearn2.models.mlp import MLP
 from pylearn2.training_algorithms.sgd import SGD
+from pylearn2.training_algorithms.bgd import BGD
 from DBL_layer import DBL_ConvLayers,DBL_FcLayers,DBL_CfLayers
 from DBL_util import trainMonitor
 from DBL_data import DBL_Data
@@ -41,7 +42,7 @@ class DBL_model(object):
                 layer.set_weights(layer_params[layer_id][1])
                 layer.set_biases(np.squeeze(layer_params[layer_id][0]))
                 #tmp = np.squeeze(layer_params[layer_id][0])
-            #print "sss:",tmp[:10]
+            print "sss:",layer_params[layer_id][1].shape,layer_params[layer_id][0].shape
             layer_id = layer_id + 1                            
 
     def saveWeight(self,pklname):                
@@ -71,33 +72,57 @@ class DBL_model(object):
 
     def loadParam_algo(self,p_algo):
         # setup algo
-        self.algo =  SGD(learning_rate = p_algo.learning_rate,
-        cost = p_algo.cost,
-        batch_size = p_algo.batch_size,
-        monitoring_batches = p_algo.monitoring_batches,
-        #monitoring_dataset = {'valid':self.DataLoader.data['valid']},
-        monitoring_dataset = self.DataLoader.data,
-        #monitoring_dataset = {'valid':self.DataLoader.data['valid'],'train':self.DataLoader.data['train']},
-        monitor_iteration_mode = p_algo.monitor_iteration_mode,
-        termination_criterion = p_algo.termination_criterion,
-        update_callbacks = p_algo.update_callbacks,
-        learning_rule = p_algo.learning_rule,
-        init_momentum = p_algo.init_momentum,
-        set_batch_size = p_algo.set_batch_size,
-        train_iteration_mode = p_algo.train_iteration_mode,
-        batches_per_iter = p_algo.batches_per_iter,
-        theano_function_mode = p_algo.theano_function_mode,
-        monitoring_costs = p_algo.monitoring_costs,
-        seed = p_algo.seed)
+        if p_algo.algo_type==0:
+            self.algo =  SGD(learning_rate = p_algo.learning_rate,
+            cost = p_algo.cost,
+            batch_size = p_algo.batch_size,
+            monitoring_batches = p_algo.monitoring_batches,
+            #monitoring_dataset = {'valid':self.DataLoader.data['valid']},
+            monitoring_dataset = self.DataLoader.data,
+            #monitoring_dataset = {'valid':self.DataLoader.data['valid'],'train':self.DataLoader.data['train']},
+            monitor_iteration_mode = p_algo.monitor_iteration_mode,
+            termination_criterion = p_algo.termination_criterion,
+            update_callbacks = p_algo.update_callbacks,
+            learning_rule = p_algo.learning_rule,
+            init_momentum = p_algo.init_momentum,
+            set_batch_size = p_algo.set_batch_size,
+            train_iteration_mode = p_algo.train_iteration_mode,
+            batches_per_iter = p_algo.batches_per_iter,
+            theano_function_mode = p_algo.theano_function_mode,
+            monitoring_costs = p_algo.monitoring_costs,
+            seed = p_algo.seed)
+        elif p_algo.algo_type==1:
+                self.algo = BGD(
+                cost=None, 
+                batch_size=None, 
+                batches_per_iter=None,
+                updates_per_batch = 10,
+                monitoring_batches=None, 
+                monitoring_dataset=None,
+                termination_criterion = None, 
+                set_batch_size = False,
+                reset_alpha = True, 
+                conjugate = False,
+                min_init_alpha = .001,
+                reset_conjugate = True, 
+                line_search_mode = None,
+                verbose_optimization=False, 
+                scale_step=1., 
+                theano_function_mode=None,
+                init_alpha=None, 
+                seedi =None)
         self.algo.setup(self.model, self.DataLoader.data['train'])
 
     def train(self,p_algo,p_monitor):        
         self.loadParam_algo(p_algo)
         self.train_monitor = trainMonitor(self.model.monitor,p_monitor)
         #self.model.monitor.report_epoch()            
+        self.train_monitor.run()
         while self.algo.continue_learning(self.model):
-            self.train_monitor.run()
             self.algo.train(self.DataLoader.data['train'])            
+            self.train_monitor.run()
+            if self.train_monitor.monitor._epochs_seen%100 == 0:
+                self.saveWeight(self.param_pkl)
             #self.model.monitor()            
 
     def test(self,batch_size,metric=0):
