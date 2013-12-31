@@ -244,6 +244,7 @@ class trainMonitor():
 
                 for (channel_X, X) in safe_izip(channel_inputs, inputs):
                     assert channel_X not in g or g[channel_X] is X
+                    #print channel_X.type , X.type
                     assert channel_X.type == X.type
                     g[channel_X] = X
 

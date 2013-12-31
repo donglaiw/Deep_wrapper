@@ -21,7 +21,11 @@ parent class with preprocessor
 class DataIO(DenseDesignMatrix):
     def __init__(self,X, y, view_converter):        
         super(DataIO, self).__init__(X=X, y=y, view_converter=view_converter)
-
+    """
+    import numpy as np
+    X = np.load('data/train/Xtrain0.npy')    
+    y = np.load('data/train/Ytrain0.npy')    
+    """
     def loadFile(self,file_path,which_set,data_id, data_ind):
         if not os.path.exists(file_path):
             print file_path+" : doesn't exist"
@@ -74,6 +78,7 @@ class DataIO(DenseDesignMatrix):
         for i in xrange(y.shape[0]):
             one_hot[i,y[i]] = 1.
         return one_hot
+
     def patchify(self,img, patch_shape):
         img = np.ascontiguousarray(img)  # won't make a copy if not needed
         X, Y = img.shape
@@ -106,7 +111,7 @@ class Denoise(DataIO):
             base_path = '/data/vision/billf/manifold-learning/DL/Deep_Low/dn/voc/',            
             data_ind = None,   
             options = None,
-            axes = ('b', 0, 1, 'c'),                                    
+            axes = ('b', 0, 1, 'c')
             ):
         self.options = options
         
@@ -176,35 +181,67 @@ class Denoise(DataIO):
         return X, y
 
 class Occ(DataIO):    
-    def __init__(self,which_set,numclass,
-            base_path = '/data/vision/billf/manifold-learning/DL/Data/icml_2013_emotions',
-            data_ind = None,            
-            preprocessor = None,            
-            fit_preprocessor = False,
-            axes = ('b', 0, 1, 'c'),            
-            fit_test_preprocessor = False,                        
-            flip=0
-            ):
-
-        X, y = self.loadFile(base_path,which_set, data_ind)
-        # train_index
-        if flip:
-            X_list_flipLR, X_list_flipUD = self.flipData(X)
-            X = X + X_list_flipLR
-            y = y + y        
+    def __init__(self,which_set,
+        base_path = '/data/vision/billf/manifold-learning/DL/Deep_Low/dn/voc/',            
+        data_ind = None,   
+        options = None,
+        axes = ('b', 0, 1, 'c')):
+        self.options = options
         
-        view_converter = DefaultViewConverter(shape=np.append(ishape.shape,ishape.num_channels), axes=axes)
-        super(Occ, self).__init__(X=X, y=self.label_id2arr(y,numclass), view_converter=view_converter)
+        if options==None:
+            data_id = 0
+        else:
+            data_id = options['data_id'];
+        
+        if data_id <=2:
+            #self.ishape = (35,35,3)
+            self.ishape = (1,3675,1)
+        X, y = self.loadFile(base_path,which_set, data_id, data_ind)            
+        
+        
+        view_converter = DefaultViewConverter(shape = self.ishape, axes=axes)            
+        super(Occ, self).__init__(X=X, y=y, view_converter=view_converter)
 
-        if preprocessor:
-            preprocessor.apply(self, can_fit=fit_preprocessor)
-        """
-        from pylearn2.datasets.preprocessing import GlobalContrastNormalization
-        pre = GlobalContrastNormalization(sqrt_bias = 10,use_std = 1)            
-        """                
 
-    def _load_data(path, which_set):     
-        pass
+    def _load_data(self, file_path, data_id, which_set):
+        import scipy.io             
+        if data_id ==0:
+            mat = scipy.io.loadmat(file_path+'train_im.mat')
+            X = (np.asarray(mat['train_im'][1:]).astype('float32').T/255-0.5)/0.2
+            if which_set != 'test':                
+                y = np.asarray(mat['train_im'][0]).astype('float32')
+                #print 'test_y: ',y[:10]
+                y = self.label_id2arr(y,151);
+                #print 'test_y2: ',y[0]
+            else:
+                y = None
+        elif data_id==1:
+            # test for one image
+            mat = scipy.io.loadmat(file_path+self.options['data'])
+            X = np.asarray(mat['nps']).astype('float32').T/255
+            y = np.asarray(mat['ps']).astype('float32').T/255
+        elif data_id==2:
+            # test for BSD
+            mat = scipy.io.loadmat(file_path+self.options['data'])
+            im_id  = self.options['im_id']
+            tmp_x = self.patchify(mat['Ins'][0][im_id],self.ishape[:2])
+            tmp_sz = tmp_x.shape
+            X = np.reshape(tmp_x,(tmp_sz[0]*tmp_sz[1],tmp_sz[2]*tmp_sz[3]))
+            y = None
+
+            """
+            # out of gpu memory
+            X = np.zeros(( 0, np.prod(self.ishape)), dtype = np.float32)
+            y = np.zeros(( 0, np.prod(self.ishape)), dtype = np.float32)
+            for i in range(len(mat['Is'][0])):
+                tmp_x = self.patchify(mat['Ins'][0][0],self.ishape[:2])
+                tmp_sz = tmp_x.shape
+                X = np.vstack((X,np.reshape(tmp_x,(tmp_sz[0]*tmp_sz[1],tmp_sz[2]*tmp_sz[3]))))
+                tmp_x = self.patchify(mat['Is'][0][0],self.ishape[:2])
+                tmp_sz = tmp_x.shape
+                y = np.vstack((X,np.reshape(tmp_x,(tmp_sz[0]*tmp_sz[1],tmp_sz[2]*tmp_sz[3]))))
+            """
+        return X, y
 
 class ICML_emotion(DataIO):
     """

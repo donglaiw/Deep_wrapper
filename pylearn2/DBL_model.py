@@ -42,7 +42,9 @@ class DBL_model(object):
                 layer.set_weights(layer_params[layer_id][1])
                 layer.set_biases(np.squeeze(layer_params[layer_id][0]))
                 #tmp = np.squeeze(layer_params[layer_id][0])
-            print "sss:",layer_params[layer_id][1].shape,layer_params[layer_id][0].shape
+            #print "aa:",layer_params[layer_id][1].shape,layer_params[layer_id][0].shape
+            #print "sss:",layer_params[layer_id][1][:10]
+            #print "ttt:",layer_params[layer_id][0][0]
             layer_id = layer_id + 1                            
 
     def saveWeight(self,pklname):                
@@ -140,6 +142,7 @@ class DBL_model(object):
         extra = (batch_size - m % batch_size) % batch_size
         #print extra,batch_size,m
         assert (m + extra) % batch_size == 0
+        #print data_test.X[0]
         if extra > 0:
             data_test.X = np.concatenate((data_test.X, np.zeros((extra, data_test.X.shape[1]),
                     dtype=data_test.X.dtype)), axis=0)
@@ -167,11 +170,12 @@ class DBL_model(object):
             if X.ndim > 2:
                 x_arg = data_test.get_topological_view(x_arg)
             yhat.append(f(x_arg.astype(X.dtype)))
-
+        #print "ww:",x_arg.shape
         yhat = np.concatenate(yhat)
         yhat = yhat[:m]
         data_test.X = data_test.X[:m,:]
         y = data_test.y
+        print m,extra
         acc = -1
         if y != None:
             if metric == 0:
@@ -184,7 +188,8 @@ class DBL_model(object):
             elif metric == 2: 
                 #print y.shape,yhat.shape,float(np.sum((y-yhat)**2)),y.size
                 #print y[:,0]
-                #print yhat[:,0]
+                #print "yhat: ",yhat[0]
+                print float(np.sum((y-yhat)**2))
                 acc = float(np.sum((y-yhat)**2))/m
             
         return [[yhat],[acc]]

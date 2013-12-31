@@ -108,6 +108,7 @@ def DBL_CfLayers(param):
     layers = [None] * numlayer
     for i in range(numlayer):
         if param[i].layer_type==0:
+            # softmax
             layers[i] =  Softmax(
             n_classes = param[i].n_classes,
             layer_name = 'sm'+str(i),
