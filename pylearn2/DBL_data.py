@@ -216,10 +216,10 @@ class Occ(DataIO):
             else:
                 y = None
         elif data_id==1:
-            # test for one image
+            # test for bench
             mat = scipy.io.loadmat(file_path+self.options['data'])
-            X = np.asarray(mat['nps']).astype('float32').T/255
-            y = np.asarray(mat['ps']).astype('float32').T/255
+            X = (np.asarray(mat['test_im'][1:]).astype('float32').T/255-0.5)/0.2
+            y = np.asarray(mat['test_im'][0]).astype('float32')
         elif data_id==2:
             # test for BSD
             mat = scipy.io.loadmat(file_path+self.options['data'])

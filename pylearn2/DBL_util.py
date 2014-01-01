@@ -19,7 +19,7 @@ class paramSet():
         pass        
     class param_algo():
         def __init__(self,
-            learning_rate, 
+            learning_rate=1e-3, 
             cost=None, 
             batch_size=None,
             monitoring_batches=None, 
@@ -35,8 +35,19 @@ class paramSet():
             theano_function_mode = None, 
             monitoring_costs=None,
             seed=[2012, 10, 5],
+            # bgd:
+            updates_per_batch = 10,
+            reset_alpha=True,
+            conjugate = False,
+            min_init_alpha=.001, 
+            reset_conjugate=True,
+            line_search_mode=None, 
+            verbose_optimization=False,
+            scale_step=1., 
+            init_alpha=None,            
             algo_type = 0):
-            self.learning_rate = learning_rate
+            
+            # shared
             self.cost = cost
             self.batch_size = batch_size
             self.monitoring_batches = monitoring_batches
@@ -44,7 +55,6 @@ class paramSet():
             self.monitor_iteration_mode = monitor_iteration_mode
             self.termination_criterion = termination_criterion
             self.update_callbacks = update_callbacks
-            self.learning_rule = learning_rule
             self.init_momentum = init_momentum
             self.set_batch_size = set_batch_size
             self.train_iteration_mode = train_iteration_mode
@@ -53,6 +63,22 @@ class paramSet():
             self.monitoring_costs = monitoring_costs
             self.seed = seed
             self.algo_type = algo_type
+            if algo_type == 0:
+                # sgd:
+                self.learning_rate = learning_rate
+                self.learning_rule = learning_rule
+            else:
+                # bgd:
+                self.updates_per_batch = updates_per_batch
+                self.reset_alpha=reset_alpha
+                self.conjugate = conjugate
+                self.min_init_alpha=min_init_alpha
+                self.reset_conjugate=reset_conjugate
+                self.line_search_mode=line_search_mode
+                self.verbose_optimization=verbose_optimization
+                self.scale_step=scale_step
+                self.init_alpha=init_alpha
+
     class param_model_conv():
         def __init__(self,
                  output_channels,
