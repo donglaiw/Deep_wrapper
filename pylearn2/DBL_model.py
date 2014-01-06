@@ -22,11 +22,12 @@ class DBL_model(object):
         self.path_test = None
         self.p_data = None
         self.batch_size = None
-        self.param = paramSet()
         self.do_savew = True
 
-    def loadData(self,basepath,which_set,data_ind=None,options=None):
-        self.DataLoader.loadData(basepath,which_set,data_ind,options)
+        self.param = paramSet()
+        self.p_monitor = {}
+    def loadData(self,basepath,which_set,data_ind=None):
+        self.DataLoader.loadData(self.p_data,basepath,which_set,data_ind)
             
     def loadWeight(self, fname):
          # create DBL_model          
@@ -94,7 +95,7 @@ class DBL_model(object):
                 batches_per_iter=p_algo.batches_per_iter,
                 updates_per_batch = p_algo.updates_per_batch,
                 monitoring_batches=p_algo.monitoring_batches,
-                monitoring_dataset=self.DataLoader.data,
+                monitoring_dataset=p_algo.monitoring_dataset,
                 termination_criterion =p_algo.termination_criterion, 
                 set_batch_size = p_algo.set_batch_size,
                 reset_alpha = p_algo.reset_alpha, 
@@ -112,14 +113,14 @@ class DBL_model(object):
     def setup(self):
         self.setupParam()
         self.check_setupParam()
-        self.dl_id = str(self.algo_id)+'_'+str(self.model_id)+'_'+str(self.num_epoch)
+
+        self.dl_id = str(self.algo_id)+'_'+str(self.model_id)+'_'+str(self.num_dim).strip('[]').replace(', ','_')+'_'+str(self.num_epoch)+str(self.test_id)
         self.param_pkl = 'dl_p'+self.dl_id+'.pkl'
         self.result_mat = 'result/'+self.dl_id+'/dl_r'+str(self.test_id)+'.mat'
-        self.p_monitor ={'channel':['train_objective','train_sm0_misclass'],'save':'log'+self.dl_id}
-        self.DataLoader = DBL_Data(self.p_data) 
-
         self.buildModel()
         self.buildLayer()                
+        
+        self.DataLoader = DBL_Data()
         self.do_test = True
         if not os.path.exists(self.param_pkl):
             self.do_test = False
@@ -193,24 +194,24 @@ class DBL_model(object):
         while self.algo.continue_learning(self.model):
             self.algo.train(self.DataLoader.data['train'])            
             self.train_monitor.run()
-            if self.do_savew and (self.train_monitor.monitor._epochs_seen+1)%100 == 0:
+            if self.do_savew and (self.train_monitor.monitor._epochs_seen+1)%10 == 0:
                 self.saveWeight(self.param_pkl)
             #self.model.monitor()            
         if self.do_savew:
             self.saveWeight(self.param_pkl)
 
 
-    def runTest(self,batch_size,metric=0):
+    def runTest(self,data_test=None,metric=0):
         """
         metric: evaluation metric
         0: classfication error
         1: L1 regression error
         2: L2 regression error
         """
-        data_test = self.DataLoader.data['test']
-        
+        if data_test == None:
+            data_test = self.DataLoader.data['test']
+        batch_size = self.batch_size
         # make batches
-        batch_size = batch_size
         m = data_test.X.shape[0]
         extra = (batch_size - m % batch_size) % batch_size
         #print extra,batch_size,m
@@ -262,7 +263,7 @@ class DBL_model(object):
                 #print y.shape,yhat.shape,float(np.sum((y-yhat)**2)),y.size
                 #print y[:,0]
                 #print "yhat: ",yhat[0]
-                print float(np.sum((y-yhat)**2))
+                #print float(np.sum((y-yhat)**2))
                 acc = float(np.sum((y-yhat)**2))/m
             
         return [[yhat],[acc]]

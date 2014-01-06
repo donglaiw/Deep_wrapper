@@ -25,7 +25,6 @@ def DBL_ConvLayers(param):
                     detector_normalization = param[i].detector_normalization,
                     output_normalization = param[i].output_normalization,
                     kernel_stride = param[i].kernel_stride,
-                    layer_type = param[i].layer_type                
                     )
         elif param[i].layer_type==1:
             layers[i] = MaxoutConvC01B(

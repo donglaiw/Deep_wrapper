@@ -26,14 +26,37 @@ class DataIO(DenseDesignMatrix):
     X = np.load('data/train/Xtrain0.npy')    
     y = np.load('data/train/Ytrain0.npy')    
     """
-    def loadFile(self,file_path,which_set,data_id, data_ind):
+    def setup(self,options):
+        self.im_id = 0
+        self.mat_id = 0
+        self.dname = ''
+        self.data_id = 0
+        self.crop_y = None
+        self.axes = ('b', 0, 1, 'c')
+
+        if options!= None:
+            if 'mat_id' in options:
+                self.mat_id = options['mat_id']
+            if 'data_id' in options:
+                self.data_id = options['data_id']
+            if 'data' in options:
+                self.dname  = options['data']
+            if 'im_id' in options:
+                self.im_id  = options['im_id']
+            if 'axes' in options:
+                self.axes  = options['axes']
+            if 'crop_y' in options:
+                self.crop_y = options['crop_y']
+
+    def loadFile(self,file_path,which_set, data_ind):
         if not os.path.exists(file_path):
             print file_path+" : doesn't exist"
             return None
         else:
             # pre-computed
-            X_path = file_path + 'X'+which_set+str(data_id)+'.npy'
-            Y_path = file_path + 'Y'+which_set+str(data_id)+'.npy'   
+            dname = self.dname[:self.dname.find('.')]
+            X_path = file_path + 'X'+which_set+'_'+dname+'_'+str(self.data_id)+'_'+str(self.im_id)+'.npy'
+            Y_path = file_path + 'Y'+which_set+'_'+dname+'_'+str(self.data_id)+'_'+str(self.im_id)+'.npy'   
              
             if os.path.exists(X_path):
                 X = np.load(X_path)
@@ -42,7 +65,7 @@ class DataIO(DenseDesignMatrix):
                     y = np.load(Y_path)
             else:            
                 #print "do it"
-                X, y = self._load_data(file_path, data_id, which_set)
+                X, y = self._load_data(file_path,  which_set)
                 #print "done"
                 # default: X=(m,n), m instances of n dimensional feature
                 #print "start_save",len(data_ind),X.shape,y.shape
@@ -60,6 +83,10 @@ class DataIO(DenseDesignMatrix):
                 if y is not None and not os.path.exists(Y_path):
                     if data_ind!=None:
                         y = y[data_ind]
+                    if self.crop_y!=None:
+                        print "crop y"
+                        y = y[:,self.crop_y]
+
                     np.save(Y_path, y)         
                     print "save: "+Y_path 
             """
@@ -68,17 +95,21 @@ class DataIO(DenseDesignMatrix):
             """
             return X,y
 
-    def _load_data(self, file_path, data_id, data_ind, which_set):
-        return
-    def _load_npy():
-        pass
+    def _load_data(self, file_path, data_ind, which_set):
+        raise NotImplementedError(str(type(self)) + " does not implement: _load_data().")
 
     def label_id2arr(self,y,numclass):
         one_hot = np.zeros((y.shape[0],numclass),dtype='float32')
         for i in xrange(y.shape[0]):
             one_hot[i,y[i]] = 1.
         return one_hot
-
+    def patchify3(self,img, patch_shape):
+        assert(len(img.shape)==3)
+        patch_shape = patch_shape[:2]
+        out = self.patchify(img[:,:,0],patch_shape)
+        for i in range(1,img.shape[-1]):
+            out = np.hstack((out,(self.patchify(img[:,:,i],patch_shape))))
+        return out
     def patchify(self,img, patch_shape):
         img = np.ascontiguousarray(img)  # won't make a copy if not needed
         X, Y = img.shape
@@ -89,7 +120,9 @@ class DataIO(DenseDesignMatrix):
         # 2) Asking how many items through that chunk of memory are needed when indices
         #    i,j,k,l are incremented by one
         strides = img.itemsize*np.array([Y, 1, Y, 1])
-        return np.lib.stride_tricks.as_strided(img, shape=shape, strides=strides)
+        tmp_x = np.lib.stride_tricks.as_strided(img, shape=shape, strides=strides)
+        tmp_sz = tmp_x.shape
+        return np.reshape(tmp_x,(tmp_sz[0]*tmp_sz[1],tmp_sz[2]*tmp_sz[3]))
 
     def flipData(self, sampleList, sizeImg = [48, 48]):
             # flip the image set from left to right, and upside down
@@ -107,60 +140,41 @@ class DataIO(DenseDesignMatrix):
             return sampleList_LR, sampleList_UD
 
 class Denoise(DataIO):    
-    def __init__(self,which_set,
-            base_path = '/data/vision/billf/manifold-learning/DL/Deep_Low/dn/voc/',            
-            data_ind = None,   
-            options = None,
-            axes = ('b', 0, 1, 'c')
-            ):
-        self.options = options
-        
-        if options==None:
-            data_id = 0
-        else:
-            data_id = options['data_id'];
-        
-        if data_id <=2:
-            self.ishape = (17,17,1)
-        X, y = self.loadFile(base_path,which_set, data_id, data_ind)            
+    def __init__(self,
+        options,
+        base_path,
+        which_set,
+        data_ind = None):
+        self.setup(options)
 
-        
-        
-        view_converter = DefaultViewConverter(shape = self.ishape, axes=axes)            
+        if self.data_id <=2:
+            self.ishape = (17,17,1)
+        X, y = self.loadFile(base_path,which_set, data_ind)
+        view_converter = DefaultViewConverter(shape = self.ishape, axes=self.axes)            
         super(Denoise, self).__init__(X=X, y=y, view_converter=view_converter)
 
-    def _load_data(self, file_path, data_id, which_set):        
+    def _load_data(self, file_path, which_set):        
         import scipy.io     
-        if data_id ==-1:
+        if self.data_id ==0:
             X = np.zeros(( 0, np.prod(self.ishape)), dtype = np.float32)
-            mat_id = self.options['mat_id']
-            for i in mat_id:
+            for i in self.mat_id:
                 mat = scipy.io.loadmat(file_path+'n_voc_p'+str(i)+'.mat')
                 #print i,mat['npss'].shape
                 X = np.vstack((X,(np.asarray(mat['npss']).T.astype('float32')/255-0.5)/0.2))
             if which_set != 'test':
                 y = np.zeros(( 0, np.prod(self.ishape)), dtype = np.float32)
-                for i in mat_id:
-                    mat = scipy.io.loadmat(file_path+'c_voc_p1.mat')
+                for i in self.mat_id:
+                    mat = scipy.io.loadmat(file_path+'c_voc_p'+str(i)+'.mat')
                     #print i,mat['pss'].shape
                     y = np.vstack((y,(np.asarray(mat['pss']).T.astype('float32')/255-0.5)/0.2))
-        elif data_id ==0:
-            mat = scipy.io.loadmat(file_path+'n_voc_p1.mat')
-            X = np.matrix.transpose(np.asarray(mat['npss']).astype('float32')/255)
-            if which_set != 'test':
-                mat = scipy.io.loadmat(file_path+'c_voc_p1.mat')
-                y = np.matrix.transpose(np.asarray(mat['pss']).astype('float32')/255)
-            else:
-                y = None
-        elif data_id==1:
+        elif self.data_id==1:
             # test for one image
-            mat = scipy.io.loadmat(file_path+self.options['data'])
+            mat = scipy.io.loadmat(file_path+self.dname)
             X = np.asarray(mat['nps']).astype('float32').T/255
             y = np.asarray(mat['ps']).astype('float32').T/255
-        elif data_id==2:
+        elif self.data_id==2:
             # test for BSD
-            mat = scipy.io.loadmat(file_path+self.options['data'])
-            im_id  = self.options['im_id']
+            mat = scipy.io.loadmat(file_path+self.dname)
             tmp_x = self.patchify(mat['Ins'][0][im_id],self.ishape[:2])
             tmp_sz = tmp_x.shape
             X = np.reshape(tmp_x,(tmp_sz[0]*tmp_sz[1],tmp_sz[2]*tmp_sz[3]))
@@ -181,66 +195,76 @@ class Denoise(DataIO):
         return X, y
 
 class Occ(DataIO):    
-    def __init__(self,which_set,
-        base_path = '/data/vision/billf/manifold-learning/DL/Deep_Low/dn/voc/',            
-        data_ind = None,   
-        options = None,
-        axes = ('b', 0, 1, 'c')):
-        self.options = options
-        
-        if options==None:
-            data_id = 0
-        else:
-            data_id = options['data_id'];
-        
-        if data_id <=2:
-            #self.ishape = (35,35,3)
+    def __init__(self,
+        options,
+        base_path,
+        which_set,
+        data_ind = None):
+        self.setup(options)
+        if self.data_id<=6:
             self.ishape = (1,3675,1)
-        X, y = self.loadFile(base_path,which_set, data_id, data_ind)            
-        
-        
-        view_converter = DefaultViewConverter(shape = self.ishape, axes=axes)            
+        elif self.data_id<=7:
+            self.ishape = (35,35,3)
+        elif self.data_id<=5:
+            self.ishape = (1,3000,1)
+        X, y = self.loadFile(base_path,which_set, data_ind)            
+        view_converter = DefaultViewConverter(shape = self.ishape, axes=self.axes)
         super(Occ, self).__init__(X=X, y=y, view_converter=view_converter)
 
 
-    def _load_data(self, file_path, data_id, which_set):
+    def _load_data(self, file_path, which_set):
         import scipy.io             
-        if data_id ==0:
-            mat = scipy.io.loadmat(file_path+'train_im.mat')
-            X = (np.asarray(mat['train_im'][1:]).astype('float32').T/255-0.5)/0.2
+        if self.data_id == -1 or self.data_id == 5:
+            # 2 class
+            varname = self.dname[:self.dname.find('.')]
+            mat = scipy.io.loadmat(file_path+self.dname)
+            X = (np.asarray(mat[varname][1:]).astype('float32').T/255-0.5)/0.2
             if which_set != 'test':                
-                y = np.asarray(mat['train_im'][0]).astype('float32')
+                y = np.asarray(mat[varname][0]).astype('float32')
+                y[y!=150]=0
+                y[y==150]=1
+                #print 'test_y: ',y[:10]
+                y = self.label_id2arr(y,2);
+                #print 'test_y2: ',y[0]
+            else:
+                y = None
+        elif self.data_id ==0:
+            # 151 classes
+            varname = self.dname[:self.dname.find('.')]
+            mat = scipy.io.loadmat(file_path+self.dname)
+            X = (np.asarray(mat[varname][1:]).astype('float32').T/255-0.5)/0.2
+            if which_set != 'test':                
+                y = np.asarray(mat[varname][0]).astype('float32')
                 #print 'test_y: ',y[:10]
                 y = self.label_id2arr(y,151);
                 #print 'test_y2: ',y[0]
             else:
                 y = None
-        elif data_id==1:
+        elif self.data_id==1:
             # test for bench
-            mat = scipy.io.loadmat(file_path+self.options['data'])
+            mat = scipy.io.loadmat(file_path+self.dname)
             X = (np.asarray(mat['test_im'][1:]).astype('float32').T/255-0.5)/0.2
             y = np.asarray(mat['test_im'][0]).astype('float32')
-        elif data_id==2:
+        elif self.data_id==2:
             # test for BSD
-            mat = scipy.io.loadmat(file_path+self.options['data'])
-            im_id  = self.options['im_id']
-            tmp_x = self.patchify(mat['Ins'][0][im_id],self.ishape[:2])
-            tmp_sz = tmp_x.shape
-            X = np.reshape(tmp_x,(tmp_sz[0]*tmp_sz[1],tmp_sz[2]*tmp_sz[3]))
+            pshape = (35,35)
+            mat = scipy.io.loadmat(file_path+self.dname)
+            X = self.patchify3(mat['Is2'][0][self.im_id],pshape)
+            #y = self.label_id2arr(np.ones((X.shape[0],1),dtype='float32'),151)
             y = None
-
-            """
-            # out of gpu memory
-            X = np.zeros(( 0, np.prod(self.ishape)), dtype = np.float32)
-            y = np.zeros(( 0, np.prod(self.ishape)), dtype = np.float32)
-            for i in range(len(mat['Is'][0])):
-                tmp_x = self.patchify(mat['Ins'][0][0],self.ishape[:2])
-                tmp_sz = tmp_x.shape
-                X = np.vstack((X,np.reshape(tmp_x,(tmp_sz[0]*tmp_sz[1],tmp_sz[2]*tmp_sz[3]))))
-                tmp_x = self.patchify(mat['Is'][0][0],self.ishape[:2])
-                tmp_sz = tmp_x.shape
-                y = np.vstack((X,np.reshape(tmp_x,(tmp_sz[0]*tmp_sz[1],tmp_sz[2]*tmp_sz[3]))))
-            """
+        elif self.data_id ==3 or self.data_id == 7:
+            # regression
+            mat = scipy.io.loadmat(file_path+self.dname)
+            X = (np.asarray(mat[self.dname[:-4]][1:]).astype('float32').T/255-0.5)/0.2
+            if which_set != 'test':                
+                mat = scipy.io.loadmat(file_path+'train_bd.mat')
+                y = np.asarray(mat['train_bd']).astype('float32').T
+                #print 'test_y: ',y[:10]
+                #print 'test_y2: ',y[0]
+                #print "data_id 3:",y.shape
+            else:
+                y = None
+           
         return X, y
 
 class ICML_emotion(DataIO):
@@ -308,16 +332,17 @@ class ICML_emotion(DataIO):
         return X, y
             
 class DBL_Data():
-    def __init__(self,dataset_id):
+    def __init__(self):
         #self.data={'train':None,'valid':None,'test':None}
         self.data={}
-        self.dataset_id = dataset_id
 
-    def loadData(self,basepath,which_set,data_ind=None,options=None):        
+    def loadData(self,p_data,basepath,which_set,data_ind=None):
         assert which_set in ['train','valid','test']
-        if self.dataset_id==0:            
-            self.data[which_set] = Occ(which_set,basepath,data_ind,options)            
-        elif self.dataset_id==1:
-            self.data[which_set] = ICML_emotion(which_set,basepath,data_ind,options)                
-        elif self.dataset_id==2:            
-            self.data[which_set] = Denoise(which_set,basepath,data_ind,options)                
+        ds_id = p_data['ds_id']
+        if ds_id==0:
+            self.data[which_set] = Occ(p_data,basepath,which_set,data_ind)            
+        elif ds_id==1:
+            self.data[which_set] = ICML_emotion(p_data,basepath,which_set,data_ind)                
+        elif ds_id==2:
+            self.data[which_set] = Denoise(p_data,basepath,which_set,data_ind)
+        
