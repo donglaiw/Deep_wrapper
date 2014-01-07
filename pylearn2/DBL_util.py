@@ -1,6 +1,7 @@
 
 import time
 import numpy as np
+import datetime
 
 """
 import logging
@@ -13,13 +14,19 @@ from pylearn2.utils import function
 from theano import config
 from theano.compat.python2x import OrderedDict
 from theano import tensor as T
+def U_centerind(sz1,xy,sz2):
+    # get the index of the rect
+    a = np.array(range(xy[1],xy[1]+sz2[1])) * sz1[0]
+    b = np.array(range(xy[0],xy[0]+sz2[0]))
+    return np.reshape(a[:,np.newaxis] + b,(1,sz2[0]*sz2[1]))[0]
+
 class paramSet():
     # wrapper to create stacked layers
     def __init__(self):
         pass        
     class param_algo():
         def __init__(self,
-            learning_rate, 
+            learning_rate=1e-3, 
             cost=None, 
             batch_size=None,
             monitoring_batches=None, 
@@ -35,8 +42,19 @@ class paramSet():
             theano_function_mode = None, 
             monitoring_costs=None,
             seed=[2012, 10, 5],
+            # bgd:
+            updates_per_batch = 10,
+            reset_alpha=True,
+            conjugate = False,
+            min_init_alpha=.001, 
+            reset_conjugate=True,
+            line_search_mode=None, 
+            verbose_optimization=False,
+            scale_step=1., 
+            init_alpha=None,            
             algo_type = 0):
-            self.learning_rate = learning_rate
+            
+            # shared
             self.cost = cost
             self.batch_size = batch_size
             self.monitoring_batches = monitoring_batches
@@ -44,7 +62,6 @@ class paramSet():
             self.monitor_iteration_mode = monitor_iteration_mode
             self.termination_criterion = termination_criterion
             self.update_callbacks = update_callbacks
-            self.learning_rule = learning_rule
             self.init_momentum = init_momentum
             self.set_batch_size = set_batch_size
             self.train_iteration_mode = train_iteration_mode
@@ -53,6 +70,22 @@ class paramSet():
             self.monitoring_costs = monitoring_costs
             self.seed = seed
             self.algo_type = algo_type
+            if algo_type == 0:
+                # sgd:
+                self.learning_rate = learning_rate
+                self.learning_rule = learning_rule
+            else:
+                # bgd:
+                self.updates_per_batch = updates_per_batch
+                self.reset_alpha=reset_alpha
+                self.conjugate = conjugate
+                self.min_init_alpha=min_init_alpha
+                self.reset_conjugate=reset_conjugate
+                self.line_search_mode=line_search_mode
+                self.verbose_optimization=verbose_optimization
+                self.scale_step=scale_step
+                self.init_alpha=init_alpha
+
     class param_model_conv():
         def __init__(self,
                  output_channels,
@@ -77,7 +110,7 @@ class paramSet():
             self.kernel_shape=kernel_shape
             self.pool_shape=pool_shape
             self.pool_stride=pool_stride
-            self.irange = irange,
+            self.irange = irange
             self.border_mode = border_mode
             self.sparse_init = sparse_init
             self.include_prob = include_prob
@@ -200,7 +233,6 @@ class trainMonitor():
         # empty data_specs do not use data, and are unable to extract the batch
         # size. The case where the whole data specs is empty is not supported.
         batch_size = mm._flat_data_specs[0].batch_size(theano_args)
-        
         nested_theano_args = mm._data_specs_mapping.nest(theano_args)
         if not isinstance(nested_theano_args, tuple):
             nested_theano_args = (nested_theano_args,)        
@@ -331,14 +363,16 @@ class trainMonitor():
                             "it had " + str(ne) + " examples total, but at "
                             "runtime it gave us " + str(actual_ne) + ".")
         # end for d
+        t = time.time() - mm.t0
         if self.p_save != None:
             b= open(self.p_save,'a')
             b.write("\tEpochs seen: %d\n" % mm._epochs_seen)
+	    b.write("\tTime Elapse: %s" % str(datetime.timedelta(seconds=t)))
         print("Monitoring step:")
         print("\tEpochs seen: %d" % mm._epochs_seen)
         print("\tBatches seen: %d" % mm._num_batches_seen)
+        print("\tTime Elapse: %s" % str(datetime.timedelta(seconds=t)))
         #print("\tExamples seen: %d" % mm._examples_seen)
-        t = time.time() - mm.t0
         #print mm.channels
         for channel_name in self.p_channel:                
             if channel_name in mm.channels:
