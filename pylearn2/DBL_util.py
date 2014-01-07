@@ -363,10 +363,11 @@ class trainMonitor():
                             "it had " + str(ne) + " examples total, but at "
                             "runtime it gave us " + str(actual_ne) + ".")
         # end for d
+        t = time.time() - mm.t0
         if self.p_save != None:
             b= open(self.p_save,'a')
             b.write("\tEpochs seen: %d\n" % mm._epochs_seen)
-        t = time.time() - mm.t0
+	    b.write("\tTime Elapse: %s" % str(datetime.timedelta(seconds=t)))
         print("Monitoring step:")
         print("\tEpochs seen: %d" % mm._epochs_seen)
         print("\tBatches seen: %d" % mm._num_batches_seen)

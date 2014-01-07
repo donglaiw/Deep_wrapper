@@ -32,9 +32,12 @@ class DataIO(DenseDesignMatrix):
         self.dname = ''
         self.data_id = 0
         self.crop_y = None
+        self.ishape = None
         self.axes = ('b', 0, 1, 'c')
 
         if options!= None:
+            if 'ishape' in options:
+                self.ishape = options['ishape']
             if 'mat_id' in options:
                 self.mat_id = options['mat_id']
             if 'data_id' in options:
@@ -201,12 +204,6 @@ class Occ(DataIO):
         which_set,
         data_ind = None):
         self.setup(options)
-        if self.data_id<=6:
-            self.ishape = (1,3675,1)
-        elif self.data_id<=7:
-            self.ishape = (35,35,3)
-        elif self.data_id<=5:
-            self.ishape = (1,3000,1)
         X, y = self.loadFile(base_path,which_set, data_ind)            
         view_converter = DefaultViewConverter(shape = self.ishape, axes=self.axes)
         super(Occ, self).__init__(X=X, y=y, view_converter=view_converter)

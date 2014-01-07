@@ -114,7 +114,7 @@ class DBL_model(object):
         self.setupParam()
         self.check_setupParam()
 
-        self.dl_id = str(self.algo_id)+'_'+str(self.model_id)+'_'+str(self.num_dim).strip('[]').replace(', ','_')+'_'+str(self.num_epoch)+str(self.test_id)
+        self.dl_id = str(self.algo_id)+'_'+str(self.model_id)+'_'+str(self.num_dim).strip('[]').replace(', ','_')+'_'+str(self.test_id)+'_'+str(self.num_epoch)
         self.param_pkl = 'dl_p'+self.dl_id+'.pkl'
         self.result_mat = 'result/'+self.dl_id+'/dl_r'+str(self.test_id)+'.mat'
         self.buildModel()
