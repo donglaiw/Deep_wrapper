@@ -74,6 +74,7 @@ class DBL_model(object):
 
     def loadParam_algo(self,p_algo):
         # setup algo
+        print self.DataLoader.data
         if p_algo.algo_type==0:
             self.algo =  SGD(learning_rate = p_algo.learning_rate,
             cost = p_algo.cost,
@@ -118,7 +119,7 @@ class DBL_model(object):
     def train(self,p_algo,p_monitor):        
         self.loadParam_algo(p_algo)
         self.train_monitor = trainMonitor(self.model.monitor,p_monitor)
-        #self.model.monitor.report_epoch()            
+        self.model.monitor.report_epoch()            
         self.train_monitor.run()
         while self.algo.continue_learning(self.model):
             self.algo.train(self.DataLoader.data['train'])            
