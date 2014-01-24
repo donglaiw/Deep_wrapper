@@ -34,6 +34,7 @@ class DataIO(DenseDesignMatrix):
         self.crop_y = None
         self.ishape = None
         self.axes = ('b', 0, 1, 'c')
+        self.pre_id = 0
 
         if options!= None:
             if 'ishape' in options:
@@ -48,8 +49,11 @@ class DataIO(DenseDesignMatrix):
                 self.im_id  = options['im_id']
             if 'axes' in options:
                 self.axes  = options['axes']
+            if 'pre_id' in options:
+                self.pre_id = options['pre_id']
             if 'crop_y' in options:
                 self.crop_y = options['crop_y']
+                #print "load c_y"
 
     def loadFile(self,file_path,which_set, data_ind):
         if not os.path.exists(file_path):
@@ -60,7 +64,7 @@ class DataIO(DenseDesignMatrix):
             dname = self.dname[:self.dname.find('.')]
             X_path = file_path + 'X'+which_set+'_'+dname+'_'+str(self.data_id)+'_'+str(self.im_id)+'.npy'
             Y_path = file_path + 'Y'+which_set+'_'+dname+'_'+str(self.data_id)+'_'+str(self.im_id)+'.npy'   
-             
+            #print X_path 
             if os.path.exists(X_path):
                 X = np.load(X_path)
                 y = None
@@ -92,6 +96,7 @@ class DataIO(DenseDesignMatrix):
 
                     np.save(Y_path, y)         
                     print "save: "+Y_path 
+                    #print self.crop_y
             """
             print y[:10]
             print X[:10,:]                              
@@ -173,14 +178,13 @@ class Denoise(DataIO):
         elif self.data_id==1:
             # test for one image
             mat = scipy.io.loadmat(file_path+self.dname)
-            X = np.asarray(mat['nps']).astype('float32').T/255
-            y = np.asarray(mat['ps']).astype('float32').T/255
+            X = (np.asarray(mat['nps']).astype('float32').T/255-0.5)/0.2
+            y = (np.asarray(mat['ps']).astype('float32').T/255-0.5)/0.2
         elif self.data_id==2:
             # test for BSD
             mat = scipy.io.loadmat(file_path+self.dname)
-            tmp_x = self.patchify(mat['Ins'][0][im_id],self.ishape[:2])
-            tmp_sz = tmp_x.shape
-            X = np.reshape(tmp_x,(tmp_sz[0]*tmp_sz[1],tmp_sz[2]*tmp_sz[3]))
+            mat = (np.asarray(mat['Ins'][0][self.im_id]).astype('float32')/255-0.5)/0.2
+            X = self.patchify(mat,self.ishape[:2])
             y = None
 
             """
@@ -204,6 +208,7 @@ class Occ(DataIO):
         which_set,
         data_ind = None):
         self.setup(options)
+        #print "yo:",self.data_id,options
         X, y = self.loadFile(base_path,which_set, data_ind)            
         view_converter = DefaultViewConverter(shape = self.ishape, axes=self.axes)
         super(Occ, self).__init__(X=X, y=y, view_converter=view_converter)
@@ -211,11 +216,11 @@ class Occ(DataIO):
 
     def _load_data(self, file_path, which_set):
         import scipy.io             
-        if self.data_id == -1 or self.data_id == 5:
+        if self.data_id == -1:
             # 2 class
             varname = self.dname[:self.dname.find('.')]
             mat = scipy.io.loadmat(file_path+self.dname)
-            X = (np.asarray(mat[varname][1:]).astype('float32').T/255-0.5)/0.2
+            X = np.asarray(mat[varname][1:]).astype('float32').T
             if which_set != 'test':                
                 y = np.asarray(mat[varname][0]).astype('float32')
                 y[y!=150]=0
@@ -229,7 +234,7 @@ class Occ(DataIO):
             # 151 classes
             varname = self.dname[:self.dname.find('.')]
             mat = scipy.io.loadmat(file_path+self.dname)
-            X = (np.asarray(mat[varname][1:]).astype('float32').T/255-0.5)/0.2
+            X = np.asarray(mat[varname][1:]).astype('float32').T
             if which_set != 'test':                
                 y = np.asarray(mat[varname][0]).astype('float32')
                 #print 'test_y: ',y[:10]
@@ -237,22 +242,27 @@ class Occ(DataIO):
                 #print 'test_y2: ',y[0]
             else:
                 y = None
+            #print self.p_data
         elif self.data_id==1:
             # test for bench
             mat = scipy.io.loadmat(file_path+self.dname)
-            X = (np.asarray(mat['test_im'][1:]).astype('float32').T/255-0.5)/0.2
+            X = np.asarray(mat['test_im'][1:]).astype('float32').T
             y = np.asarray(mat['test_im'][0]).astype('float32')
         elif self.data_id==2:
             # test for BSD
             pshape = (35,35)
             mat = scipy.io.loadmat(file_path+self.dname)
-            X = self.patchify3(mat['Is2'][0][self.im_id],pshape)
+            if mat['Is2'][0][self.im_id].ndim == 3:
+                X = self.patchify3(mat['Is2'][0][self.im_id],pshape)
+            else: 
+                X = self.patchify(mat['Is2'][0][self.im_id],pshape)
             #y = self.label_id2arr(np.ones((X.shape[0],1),dtype='float32'),151)
+            X = X.astype('float32')
             y = None
-        elif self.data_id ==3 or self.data_id == 7:
+        elif self.data_id ==3:
             # regression
             mat = scipy.io.loadmat(file_path+self.dname)
-            X = (np.asarray(mat[self.dname[:-4]][1:]).astype('float32').T/255-0.5)/0.2
+            X = np.asarray(mat[self.dname[:-4]][1:]).astype('float32').T
             if which_set != 'test':                
                 mat = scipy.io.loadmat(file_path+'train_bd.mat')
                 y = np.asarray(mat['train_bd']).astype('float32').T
@@ -261,7 +271,23 @@ class Occ(DataIO):
                 #print "data_id 3:",y.shape
             else:
                 y = None
-           
+        elif self.data_id ==4:
+            # regression
+            mat = scipy.io.loadmat(file_path+self.dname)
+            X = np.asarray(mat['train_im']).astype('float32').T
+            if which_set != 'test':                
+                y = np.asarray(mat['train_bd']).astype('float32').T
+                #print 'test_y: ',y[:10]
+                #print 'test_y2: ',y[0]
+                #print "data_id 3:",y.shape
+            else:
+                y = None
+        
+        if self.pre_id==1:
+            X = (X/255-0.5)/0.2
+            if self.data_id ==4 and y != None:
+                y = (y/255-0.5)/0.2
+
         return X, y
 
 class ICML_emotion(DataIO):

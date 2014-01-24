@@ -367,7 +367,7 @@ class trainMonitor():
         if self.p_save != None:
             b= open(self.p_save,'a')
             b.write("\tEpochs seen: %d\n" % mm._epochs_seen)
-	    b.write("\tTime Elapse: %s" % str(datetime.timedelta(seconds=t)))
+	    b.write("\tTime Elapse: %s\n" % str(datetime.timedelta(seconds=t)))
         print("Monitoring step:")
         print("\tEpochs seen: %d" % mm._epochs_seen)
         print("\tBatches seen: %d" % mm._num_batches_seen)

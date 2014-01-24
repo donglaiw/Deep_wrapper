@@ -8,14 +8,15 @@ from DBL_util import trainMonitor,paramSet
 from DBL_data import DBL_Data
 import scipy.io
 import glob,os
-
+import theano.tensor as T
 
 class DBL_model(object):
-    def __init__(self,algo_id,model_id,num_epoch,num_dim,test_id): 
+    def __init__(self,algo_id,model_id,num_epoch,num_dim,train_id,test_id): 
         self.algo_id = algo_id
         self.model_id = model_id
         self.num_epoch = num_epoch
         self.num_dim = num_dim
+        self.train_id = train_id
         self.test_id = test_id
 
         self.path_train = None
@@ -44,13 +45,16 @@ class DBL_model(object):
         num_layers = len(self.model.layers)
         for layer in self.model.layers:
             # squeeze for matlab structure
+            aa=layer.get_params();print aa[0].shape,aa[1].shape
+            print np.squeeze(layer_params[layer_id][0]).shape
+            print np.squeeze(layer_params[layer_id][1]).shape
             if np.squeeze(layer_params[layer_id][0]).ndim==2:
                 layer.set_weights(layer_params[layer_id][0])
-                layer.set_biases(np.squeeze(layer_params[layer_id][1]))
+                layer.set_biases(layer_params[layer_id][1])
                 #tmp = np.squeeze(layer_params[layer_id][1])                
             else:
                 layer.set_weights(layer_params[layer_id][1])
-                layer.set_biases(np.squeeze(layer_params[layer_id][0]))
+                layer.set_biases(layer_params[layer_id][0])
                 #tmp = np.squeeze(layer_params[layer_id][0])
             #print "aa:",layer_params[layer_id][1].shape,layer_params[layer_id][0].shape
             #print "sss:",layer_params[layer_id][1][:10]
@@ -115,7 +119,7 @@ class DBL_model(object):
         self.setupParam()
         self.check_setupParam()
 
-        self.dl_id = str(self.algo_id)+'_'+str(self.model_id)+'_'+str(self.num_dim).strip('[]').replace(', ','_')+'_'+str(self.test_id)+'_'+str(self.num_epoch)
+        self.dl_id = str(self.algo_id)+'_'+str(self.model_id)+'_'+str(self.num_dim).strip('[]').replace(', ','_')+'_'+str(self.train_id)+'_'+str(self.num_epoch)
         self.param_pkl = 'dl_p'+self.dl_id+'.pkl'
         self.result_mat = 'result/'+self.dl_id+'/dl_r'+str(self.test_id)+'.mat'
         self.buildModel()
@@ -123,6 +127,7 @@ class DBL_model(object):
         
         self.DataLoader = DBL_Data()
         self.do_test = True
+        print self.param_pkl
         if not os.path.exists(self.param_pkl):
             self.do_test = False
             # training
@@ -202,7 +207,7 @@ class DBL_model(object):
             self.saveWeight(self.param_pkl)
 
 
-    def runTest(self,data_test=None,metric=0):
+    def runTest(self,data_test=None,metric=-1):
         """
         metric: evaluation metric
         0: classfication error
@@ -245,7 +250,8 @@ class DBL_model(object):
             if X.ndim > 2:
                 x_arg = data_test.get_topological_view(x_arg)
             yhat.append(f(x_arg.astype(X.dtype)))
-        #print "ww:",x_arg.shape
+        print "ww:",x_arg.shape
+        print f(x_arg.astype(X.dtype)).shape
         yhat = np.concatenate(yhat)
         yhat = yhat[:m]
         data_test.X = data_test.X[:m,:]
@@ -262,10 +268,11 @@ class DBL_model(object):
                 acc = float(np.sum(abs(y-yhat)))/m
             elif metric == 2: 
                 #print y.shape,yhat.shape,float(np.sum((y-yhat)**2)),y.size
-                #print y[:,0]
-                #print "yhat: ",yhat[0]
                 #print float(np.sum((y-yhat)**2))
-                acc = float(np.sum((y-yhat)**2))/m
+                acc = float(np.sum((y-np.reshape(yhat,y.shape))**2))/m
+                print "y: ",y
+                print "yhat: ",yhat
+                print "acc: ",acc
             
         return [[yhat],[acc]]
 
