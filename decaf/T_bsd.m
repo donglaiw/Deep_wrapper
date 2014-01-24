@@ -15,15 +15,26 @@ imagesc(Is{im_id})
 for i=1:5
 	subplot(3,2,i),imagesc(segs{im_id}{i})
 end
+
+img = squeeze(oo(1,:,:,:))-min(oo(:));
+imwrite(uint8(img(end:-1:1,:,:)),'in_100099.jpg')
+
+
+
+subplot(221),imagesc(flipud(max(squeeze(abs(im)),[],3)));colorbar
+subplot(222),imagesc(max(squeeze(abs(bp_val(:,:,:,1))),[],3));colorbar
+subplot(223),imagesc(mask);
+
 %}
 
 mask = segs{im_id}{1}==4;
 %imagesc(mask)
 
-
+mask = imresize(mask,[256 256],'nearest');
 INPUT_DIM = 227;
 margin = floor((size(mask)-INPUT_DIM)/2);
 mask = mask(margin(1)+(1:INPUT_DIM),margin(2)+(1:INPUT_DIM)); 
+
 
 bp_val = zeros([size(mask) 3 1000],'single');
 parfor lid = 1:1000

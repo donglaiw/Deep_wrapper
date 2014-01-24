@@ -18,14 +18,15 @@ import scipy.io
 
 from collections import namedtuple
 FLAGS = namedtuple("FLAGS", "net_file meta_file")
-FLAGS.net_file = '../scripts/imagenet.decafnet.epoch90'
-FLAGS.meta_file = '../scripts/imagenet.decafnet.meta'
+DF='/home/Stephen/Desktop/VisionLib/Donglai/DeepL/Decaf/decaf/'
+FLAGS.net_file = DF+'scripts/imagenet.decafnet.epoch90'
+FLAGS.meta_file = DF+'scripts/imagenet.decafnet.meta'
 INPUT_DIM = 227
 OUTPUT_DIM = 1000
 OUTPUT_AFFIX = '_cudanet_out'
 DATA_TYPENAME = 'data'
 COST_TYPENAME = 'cost'
-
+_JEFFNET_FLIP = True
 
 class dw_LossLayer(base.LossLayer):
     def set_label(self,label):
@@ -171,6 +172,8 @@ class dw_Net(base.Net):
             for fid,filename in enumerate(fns):
                 image = skimage.io.imread(filename).astype(np.uint8)
                 image = transform.scale_and_extract(transform.as_rgb(image), 256).astype(np.float32) * 255. - self.jf_data_mean
+                if _JEFFNET_FLIP:
+                    image = image[::-1, :].copy()
                 data = np.vstack((data,self.subpatch(image,pid))) 
                 tmp_ll = np.zeros((data.shape[0]-label.shape[0],1000)).astype(np.float32)
                 tmp_ll[:,lls] = 1
@@ -204,30 +207,33 @@ class dw_Net(base.Net):
         self.finish()
         self.layers['loss'].set_label(self.layers['input']._sources[1])
 
-def check_more(net,ll_ran,fn='bp_',num_persave=100):    
-    num_save = np.ceil(len(ll_ran)/num_persave)
+def check_more(net,ll_ran,fn='bp_',num_persave=100):
+    num_left = len(ll_ran)
+    num_save = int(np.ceil(float(num_left)/num_persave))
     tmp_sz = net.layers['input']._sources[0].shape
-    im = np.zeros_like((tmp_sz[0],tmp_sz[1],tmp_sz[2],tmp_sz[3],num_persave))
-    tmp_ll = np.zeros_like(net.layers['input']._sources[1])    
+    im = np.zeros((tmp_sz[0],tmp_sz[1],tmp_sz[2],tmp_sz[3],min(num_left,num_persave)),'float32')
+    tmp_ll = np.zeros_like(net.layers['input']._sources[1])
     for s in range(num_save):
         im[:] = 0
-        for t in range(num_persave):
+        for t in range(num_left):
             i = ll_ran[s*num_persave+t]
             tmp_ll[:,i] = 1
             net.layers['loss'].set_label(tmp_ll)
-            im[:,:,:,i] = net.forward_backward()            
+            im[:,:,:,:,t] = net.forward_backward()
             tmp_ll[:] = 0
         print "save ",s
         scipy.io.savemat(fn+str(s)+'.mat',mdict={'im':im})
+        num_left -= num_persave
 
-def check_one(net):
-    im = net.forward_backward()
-    scipy.io.savemat('ha.mat',mdict={'im':im})
-    scipy.io.savemat('im.mat',mdict={'oo':net.layers['input']._sources[0]})
-    a=open('label.txt','w');
-    for nn in net.jf_label_names:
-        a.write(nn+'\n')
-    a.close()
+
+def save_mat(net,id):
+    if id==0:
+        scipy.io.savemat('im.mat',mdict={'oo':net.layers['input']._sources[0]})
+    elif id==1:
+        a=open('label.txt','w');
+        for nn in net.jf_label_names:
+            a.write(nn+'\n')
+        a.close()
 
 def check_update():
     b = net.layers['fc8']._bias.data()
@@ -247,4 +253,5 @@ elif tid==1:
 
 net.load_cudanet( {'data': (INPUT_DIM, INPUT_DIM, 3)})
 net.layers['conv1']._large_mem = True
-check_more(net,range(1000),'bp'+str(tid)+'_')
+#check_more(net,range(1000),'bp'+str(tid)+'_')
+check_more(net,range(1),'bp'+str(tid)+'_')
