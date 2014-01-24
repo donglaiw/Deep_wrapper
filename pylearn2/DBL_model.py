@@ -191,7 +191,6 @@ class DBL_model(object):
         self.loadAlgo(self.p_algo)
         self.train_monitor = trainMonitor(self.model.monitor,self.p_monitor)
         #self.model.monitor.report_epoch()            
->>>>>>> c7f7505045090b1e5cea850988cf6c06cf45347a
         self.train_monitor.run()
         while self.algo.continue_learning(self.model):
             self.algo.train(self.DataLoader.data['train'])            
