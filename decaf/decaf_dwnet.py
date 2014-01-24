@@ -15,11 +15,11 @@ import skimage.transform
 import skimage.filter
 import scipy.io
 
-
+DF='/data/vision/billf/stereo-vision/VisionLib/Donglai/DeepL/decaf/'
 from collections import namedtuple
 FLAGS = namedtuple("FLAGS", "net_file meta_file")
-FLAGS.net_file = '../scripts/imagenet.decafnet.epoch90'
-FLAGS.meta_file = '../scripts/imagenet.decafnet.meta'
+FLAGS.net_file = DF+'scripts/imagenet.decafnet.epoch90'
+FLAGS.meta_file = DF+'scripts/imagenet.decafnet.meta'
 INPUT_DIM = 227
 OUTPUT_DIM = 1000
 OUTPUT_AFFIX = '_cudanet_out'
@@ -205,20 +205,22 @@ class dw_Net(base.Net):
         self.layers['loss'].set_label(self.layers['input']._sources[1])
 
 def check_more(net,ll_ran,fn='bp_',num_persave=100):    
-    num_save = np.ceil(len(ll_ran)/num_persave)
+    num_left = len(ll_ran)
+    num_save = int(np.ceil(float(num_left)/num_persave))
     tmp_sz = net.layers['input']._sources[0].shape
-    im = np.zeros_like((tmp_sz[0],tmp_sz[1],tmp_sz[2],tmp_sz[3],num_persave))
+    im = np.zeros((tmp_sz[0],tmp_sz[1],tmp_sz[2],tmp_sz[3],min(num_left,num_persave)),'float32')
     tmp_ll = np.zeros_like(net.layers['input']._sources[1])    
     for s in range(num_save):
         im[:] = 0
-        for t in range(num_persave):
+        for t in range(num_left):
             i = ll_ran[s*num_persave+t]
             tmp_ll[:,i] = 1
             net.layers['loss'].set_label(tmp_ll)
-            im[:,:,:,i] = net.forward_backward()            
+            im[:,:,:,:,t] = net.forward_backward()            
             tmp_ll[:] = 0
         print "save ",s
         scipy.io.savemat(fn+str(s)+'.mat',mdict={'im':im})
+	num_left -= num_persave
 
 def check_one(net):
     im = net.forward_backward()
@@ -247,4 +249,14 @@ elif tid==1:
 
 net.load_cudanet( {'data': (INPUT_DIM, INPUT_DIM, 3)})
 net.layers['conv1']._large_mem = True
-check_more(net,range(1000),'bp'+str(tid)+'_')
+import sys
+name = int(sys.argv[1])
+# name: 0-15
+rr = range(name*63,min(1000,(name+1)*63))
+check_more(net,rr,'bp'+str(tid)+'_'+str(name)+'_')
+"""
+for id in {0..15}
+do
+python decaf_dwnet.py ${id} &
+done
+"""
