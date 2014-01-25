@@ -47,10 +47,11 @@ class DBL_model(object):
             # squeeze for matlab structure
             #aa=layer.get_params();print aa[0].shape,aa[1].shape
             dims =[np.squeeze(layer_params[layer_id][k]).ndim for k in [0,1]]
-            print dims
-            for id in [0,1]:
-                if dims[id] ==0:
-                    layer_params[layer_id][id] = layer_params[layer_id][id][0]
+            #print dims
+            if fname[-3:] == 'mat':
+                for id in [0,1]:
+                    if dims[id] ==0:
+                        layer_params[layer_id][id] = layer_params[layer_id][id][0]
                     
             if dims[0]>=dims[1]:
                 layer.set_weights(layer_params[layer_id][0])
