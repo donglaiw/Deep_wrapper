@@ -45,10 +45,14 @@ class DBL_model(object):
         num_layers = len(self.model.layers)
         for layer in self.model.layers:
             # squeeze for matlab structure
-            aa=layer.get_params();print aa[0].shape,aa[1].shape
-            print np.squeeze(layer_params[layer_id][0]).shape
-            print np.squeeze(layer_params[layer_id][1]).shape
-            if np.squeeze(layer_params[layer_id][0]).ndim==2:
+            #aa=layer.get_params();print aa[0].shape,aa[1].shape
+            dims =[np.squeeze(layer_params[layer_id][k]).ndim for k in [0,1]]
+            print dims
+            for id in [0,1]:
+                if dims[id] ==0:
+                    layer_params[layer_id][id] = layer_params[layer_id][id][0]
+                    
+            if dims[0]>=dims[1]:
                 layer.set_weights(layer_params[layer_id][0])
                 layer.set_biases(layer_params[layer_id][1])
                 #tmp = np.squeeze(layer_params[layer_id][1])                
@@ -75,6 +79,7 @@ class DBL_model(object):
     
     def loadAlgo(self,p_algo):
         # setup algo
+        #print self.DataLoader.data
         if p_algo.algo_type==0:
             self.algo =  SGD(learning_rate = p_algo.learning_rate,
             cost = p_algo.cost,
@@ -176,7 +181,7 @@ class DBL_model(object):
         epoch_max = 0
         if len(fns)==0:
             # first time to do it, load matlab prior
-            mat_init = 'init_p'+str(self.model_id)+'.mat'
+            mat_init = 'init_p'+str(self.model_id)+'_'+str(self.train_id)+'.mat'
             if os.path.exists(mat_init):
                 print "load initial mat weight: ", mat_init
                 self.loadWeight(mat_init)
@@ -249,8 +254,8 @@ class DBL_model(object):
             if X.ndim > 2:
                 x_arg = data_test.get_topological_view(x_arg)
             yhat.append(f(x_arg.astype(X.dtype)))
-        print "ww:",x_arg.shape
-        print f(x_arg.astype(X.dtype)).shape
+        #print "ww:",x_arg.shape
+        #print f(x_arg.astype(X.dtype)).shape
         yhat = np.concatenate(yhat)
         yhat = yhat[:m]
         data_test.X = data_test.X[:m,:]

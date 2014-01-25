@@ -281,7 +281,25 @@ class Occ(DataIO):
                 #print "data_id 3:",y.shape
             else:
                 y = None
-        
+        elif self.data_id ==5:
+            # regression
+            mat = scipy.io.loadmat(file_path+'decaf_5_'+str(self.mat_id[0])+'_im.mat')
+            tmp_X = mat['fmap'][0]
+            dim = tmp_X[0].shape
+            X = np.zeros(( 0, dim[-1]), dtype = np.float32)
+            for im_X in tmp_X:
+                dim = im_X.shape
+                X = np.vstack((X,np.reshape(np.asarray(im_X).astype('float32'),(np.prod(dim[:2]),dim[-1]))))
+            if which_set != 'test':                
+                tmp_y = mat['fgt'][0]
+                y = np.zeros(( 0, 1), dtype = np.float32)
+                for im_y in tmp_y:
+                    y = np.vstack((y,np.reshape(np.asarray(im_y).astype('float32'),(im_y.size,1))))
+                #print 'test_y: ',y[:10]
+                #print 'test_y2: ',y[0]
+                #print "data_id 3:",y.shape
+            else:
+                y = None       
         if self.pre_id==1:
             X = (X/255-0.5)/0.2
             if self.data_id ==4 and y != None:
