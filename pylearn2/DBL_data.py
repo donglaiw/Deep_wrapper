@@ -3,7 +3,6 @@ import os
 import sys
 import time
 import numpy as np
-import Image
 
 import theano
 import theano.tensor as T
