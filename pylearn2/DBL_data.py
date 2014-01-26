@@ -284,7 +284,7 @@ class Occ(DataIO):
                 y = None
         elif self.data_id ==5:
             # regression
-            mat = scipy.io.loadmat(file_path+'decaf_5_'+str(self.mat_id[0])+'_im.mat')
+            mat = scipy.io.loadmat(file_path+'decaf_5_'+str(self.mat_id[0])+self.dname[self.dname.rfind('_'):])
             tmp_X = mat['fmap'][0]
             dim = tmp_X[0].shape
             X = np.zeros(( 0, dim[-1]), dtype = np.float32)
