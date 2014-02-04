@@ -204,9 +204,9 @@ class DBL_model(object):
         self.train_monitor.run()
         while self.algo.continue_learning(self.model):
             self.algo.train(self.DataLoader.data['train'])            
-            self.train_monitor.run()
             if self.do_savew and (self.train_monitor.monitor._epochs_seen+1)%10 == 0:
                 self.saveWeight(self.param_pkl)
+                self.train_monitor.run()
             #self.model.monitor()            
         if self.do_savew:
             self.saveWeight(self.param_pkl)
