@@ -83,11 +83,10 @@ class DataIO(DenseDesignMatrix):
                     # print data_ind,num
                     X = X[data_ind, :]
                 #print "after cut",len(data_ind),X.shape
-
                 if not os.path.exists(X_path):
                     np.save(X_path, X)
                     print "save: "+X_path
-                if y is not None and not os.path.exists(Y_path):
+                if y is not None:
                     if data_ind!=None:
                         y = y[data_ind]
                     if self.crop_y!=None:
@@ -291,7 +290,7 @@ class Occ(DataIO):
             for im_X in tmp_X:
                 dim = im_X.shape
                 X = np.vstack((X,np.reshape(np.asarray(im_X).astype('float32'),(np.prod(dim[:2]),dim[-1]))))
-            if which_set != 'test':                
+            if True or which_set != 'test':                
                 tmp_y = mat['fgt'][0]
                 y = np.zeros(( 0, 1), dtype = np.float32)
                 for im_y in tmp_y:
@@ -301,6 +300,19 @@ class Occ(DataIO):
                 #print "data_id 3:",y.shape
             else:
                 y = None       
+        elif self.data_id ==6:
+            # regression
+            mat = scipy.io.loadmat(file_path+self.dname)
+            #print file_path+self.dname
+            X = np.asarray(mat['mat_x']).astype('float32').T
+            if which_set != 'test':                
+                y = np.asarray(mat['mat_y']).astype('float32').T
+                #print 'test_y: ',y[:10]
+                #print 'test_y2: ',y[0]
+                #print "data_id 3:",y.shape
+            else:
+                y = None
+
         if self.pre_id==1:
             X = (X/255-0.5)/0.2
             if self.data_id ==4 and y != None:
