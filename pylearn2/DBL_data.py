@@ -304,14 +304,8 @@ class Occ(DataIO):
             mat = scipy.io.loadmat(file_path+self.dname)
             #print file_path+self.dname
             X = np.asarray(mat['mat_x']).astype('float32').T
-            if which_set != 'test':                
-                y = np.asarray(mat['mat_y']).astype('float32').T
-                #print 'test_y: ',y[:10]
-                #print 'test_y2: ',y[0]
-                #print "data_id 3:",y.shape
-            else:
-                y = None
-
+            y = np.asarray(mat['mat_y']).astype('float32').T
+            
         if self.pre_id==1:
             X = (X/255-0.5)/0.2
             if self.data_id ==4 and y != None:
