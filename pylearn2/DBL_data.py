@@ -2,6 +2,7 @@ import cPickle
 import os
 import sys
 import time
+import struct
 import numpy as np
 
 import theano
@@ -54,6 +55,28 @@ class DataIO(DenseDesignMatrix):
                 self.crop_y = options['crop_y']
                 #print "load c_y"
 
+    def loadBin(self,name,shape):
+        f = open(name, "rb")
+        # read 4 bytes at a time (float)
+        bytes = f.read(4)           # returns a sequence of bytes as a string
+        data = np.empty(shape,dtype='float32')
+        cc = 0
+        rr = 0
+        print shape
+        while bytes != "":
+            # string byte-sequence to float
+            num = float(struct.unpack('f',bytes)[0])
+
+            # append to list
+            data[rr][cc] = float(num);
+            rr += 1
+            if rr==shape[0]:
+                rr = 0
+                cc +=1
+            # read next 4 bytes
+            bytes = f.read(4)
+        f.close()        
+        return data
     def loadFile(self,file_path,which_set, data_ind):
         if not os.path.exists(file_path):
             print file_path+" : doesn't exist"
@@ -306,6 +329,16 @@ class Occ(DataIO):
             X = np.asarray(mat['mat_x']).astype('float32').T
             y = np.asarray(mat['mat_y']).astype('float32').T
             
+        elif self.data_id <=8:
+            nn = file_path+self.dname[:-5]
+            num = 1000000
+            if which_set=='train':
+                num = 2000000
+            if self.data_id==8:
+                num = num/10
+            X = self.loadBin(nn+'x.bin',(289,num)).T
+            y = self.loadBin(nn+'y.bin',(81,num)).T
+
         if self.pre_id==1:
             X = (X/255-0.5)/0.2
             if self.data_id ==4 and y != None:
