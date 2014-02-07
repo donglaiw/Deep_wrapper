@@ -83,7 +83,7 @@ class DataIO(DenseDesignMatrix):
             return None
         else:
             # pre-computed
-            dname = self.dname[:self.dname.find('.')]
+            dname = self.dname[0][:self.dname[0].find('.')]
             X_path = file_path + 'X'+which_set+'_'+dname+'_'+str(self.data_id)+'_'+str(self.im_id)+'.npy'
             Y_path = file_path + 'Y'+which_set+'_'+dname+'_'+str(self.data_id)+'_'+str(self.im_id)+'.npy'   
             #print X_path 
@@ -198,12 +198,12 @@ class Denoise(DataIO):
                     y = np.vstack((y,(np.asarray(mat['pss']).T.astype('float32')/255-0.5)/0.2))
         elif self.data_id==1:
             # test for one image
-            mat = scipy.io.loadmat(file_path+self.dname)
+            mat = scipy.io.loadmat(file_path+self.dname[0])
             X = (np.asarray(mat['nps']).astype('float32').T/255-0.5)/0.2
             y = (np.asarray(mat['ps']).astype('float32').T/255-0.5)/0.2
         elif self.data_id==2:
             # test for BSD
-            mat = scipy.io.loadmat(file_path+self.dname)
+            mat = scipy.io.loadmat(file_path+self.dname[0])
             mat = (np.asarray(mat['Ins'][0][self.im_id]).astype('float32')/255-0.5)/0.2
             X = self.patchify(mat,self.ishape[:2])
             y = None
@@ -239,8 +239,8 @@ class Occ(DataIO):
         import scipy.io             
         if self.data_id == -1:
             # 2 class
-            varname = self.dname[:self.dname.find('.')]
-            mat = scipy.io.loadmat(file_path+self.dname)
+            varname = self.dname[0][:self.dname.find('.')]
+            mat = scipy.io.loadmat(file_path+self.dname[0])
             X = np.asarray(mat[varname][1:]).astype('float32').T
             if which_set != 'test':                
                 y = np.asarray(mat[varname][0]).astype('float32')
@@ -253,7 +253,7 @@ class Occ(DataIO):
                 y = None
         elif self.data_id ==0:
             # 151 classes
-            varname = self.dname[:self.dname.find('.')]
+            varname = self.dname[0][:self.dname[0].find('.')]
             mat = scipy.io.loadmat(file_path+self.dname)
             X = np.asarray(mat[varname][1:]).astype('float32').T
             if which_set != 'test':                
@@ -324,11 +324,15 @@ class Occ(DataIO):
                 y = None       
         elif self.data_id ==6:
             # regression
-            mat = scipy.io.loadmat(file_path+self.dname)
-            #print file_path+self.dname
-            X = (np.asarray(mat['mat_x']).astype('float32').T)/255
+            mat = scipy.io.loadmat(file_path+self.dname[0])
+            X = np.asarray(mat['mat_x']).astype('float32').T/255
             y = np.asarray(mat['mat_y']).astype('float32').T
-            
+            for fn in self.dname[1:]:
+                mat = scipy.io.loadmat(file_path+fn)
+                X = np.vstack((X,np.asarray(mat['mat_x']).astype('float32').T))/255
+                y = np.vstack((y,np.asarray(mat['mat_y']).astype('float32').T))
+            print X.shape,y.shape 
+
         elif self.data_id <=8:
             nn = file_path+self.dname[:-5]
             num = 1000000
