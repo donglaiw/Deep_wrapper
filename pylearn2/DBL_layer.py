@@ -28,7 +28,7 @@ def DBL_ConvLayers(param):
                     )
         elif param[i].layer_type==1:
             layers[i] = MaxoutConvC01B(
-                    layer_name='conv'+str(i),
+                    layer_name='max'+str(i),
                     output_channels = param[i].nkernels,
                     irange = param[i].irange,
                     kernel_shape = param[i].kshape,
@@ -42,7 +42,7 @@ def DBL_ConvLayers(param):
                     kernel_shape = param[i].kernel_shape,
                     pool_shape = param[i].pool_shape,
                     pool_stride = param[i].pool_stride,
-                    layer_name='conv'+str(i),
+                    layer_name='convrelu'+str(i),
                     irange = param[i].irange,
                     border_mode = param[i].border_mode,
                     sparse_init = param[i].sparse_init,
@@ -63,7 +63,7 @@ def DBL_ConvLayers(param):
                     kernel_shape = param[i].kernel_shape,
                     pool_shape = param[i].pool_shape,
                     pool_stride = param[i].pool_stride,
-                    layer_name='conv'+str(i),
+                    layer_name='convabs'+str(i),
                     irange = param[i].irange,
                     border_mode = param[i].border_mode,
                     sparse_init = param[i].sparse_init,
@@ -78,14 +78,34 @@ def DBL_ConvLayers(param):
                     output_normalization = param[i].output_normalization,
                     kernel_stride = param[i].kernel_stride,
                     )
-
         elif param[i].layer_type==4:
+            layers[i] = ConvTanh(
+                    output_channels = param[i].output_channels,
+                    kernel_shape = param[i].kernel_shape,
+                    pool_shape = param[i].pool_shape,
+                    pool_stride = param[i].pool_stride,
+                    layer_name='convtanh'+str(i),
+                    irange = param[i].irange,
+                    border_mode = param[i].border_mode,
+                    sparse_init = param[i].sparse_init,
+                    include_prob = param[i].include_prob,
+                    init_bias = param[i].init_bias,
+                    W_lr_scale = param[i].W_lr_scale,
+                    b_lr_scale = param[i].b_lr_scale,
+                    left_slope = param[i].left_slope,
+                    max_kernel_norm = param[i].max_kernel_norm,
+                    pool_type = param[i].pool_type,
+                    detector_normalization = param[i].detector_normalization,
+                    output_normalization = param[i].output_normalization,
+                    kernel_stride = param[i].kernel_stride,
+                    )
+        elif param[i].layer_type==5:
             layers[i] = ConvAbsTanh(
                     output_channels = param[i].output_channels,
                     kernel_shape = param[i].kernel_shape,
                     pool_shape = param[i].pool_shape,
                     pool_stride = param[i].pool_stride,
-                    layer_name='conv'+str(i),
+                    layer_name='convabstanh'+str(i),
                     irange = param[i].irange,
                     border_mode = param[i].border_mode,
                     sparse_init = param[i].sparse_init,
@@ -245,6 +265,40 @@ class ConvAbs(ConvRectifiedLinear):
         #return T.sqr(Y - T.reshape(Y_hat,T.shape(Y)))
         return T.sqr(Y - Y_hat)
         #return T.abs_(Y - Y_hat)
+
+class ConvTanh(ConvAbs):
+    def fprop(self, state_below):
+        self.input_space.validate(state_below)
+        z = self.transformer.lmul(state_below) + self.b
+        if self.layer_name is not None:
+            z.name = self.layer_name + '_z'
+        #d = T.sqrt(T.power(z,2)+self.left_slope)
+        d = T.tanh(z)
+        #ss = T.shape(z)
+        #d = T.reshape(d,(ss[0],ss[2]*ss[3]))
+        self.detector_space.validate(d)
+        if not hasattr(self, 'detector_normalization'):
+            self.detector_normalization = None
+        if self.detector_normalization:
+            d = self.detector_normalization(d)
+        #if self.pool_shape[0]!=1 or self.pool_shape[1]!=1
+        assert self.pool_type in ['max', 'mean']
+        if self.pool_type == 'max':
+            p = max_pool(bc01=d, pool_shape=self.pool_shape,
+                    pool_stride=self.pool_stride,
+                    image_shape=self.detector_space.shape)
+        elif self.pool_type == 'mean':
+            p = mean_pool(bc01=d, pool_shape=self.pool_shape,
+                    pool_stride=self.pool_stride,
+                    image_shape=self.detector_space.shape)
+
+        self.output_space.validate(p)
+        if not hasattr(self, 'output_normalization'):
+            self.output_normalization = None
+        if self.output_normalization:
+            p = self.output_normalization(p)
+        return p
+
 
 class ConvAbsTanh(ConvAbs):
     def fprop(self, state_below):

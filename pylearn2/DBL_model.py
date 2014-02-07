@@ -47,7 +47,6 @@ class DBL_model(object):
             # squeeze for matlab structure
             #aa=layer.get_params();print aa[0].shape,aa[1].shape
             dims =[np.squeeze(layer_params[layer_id][k]).ndim for k in [0,1]]
-            print dims
             if fname[-3:] == 'mat':
                 for id in [0,1]:
                     if dims[id] ==0:
@@ -204,9 +203,9 @@ class DBL_model(object):
         self.train_monitor.run()
         while self.algo.continue_learning(self.model):
             self.algo.train(self.DataLoader.data['train'])            
+            self.train_monitor.run()
             if self.do_savew and (self.train_monitor.monitor._epochs_seen+1)%10 == 0:
                 self.saveWeight(self.param_pkl)
-                self.train_monitor.run()
             #self.model.monitor()            
         if self.do_savew:
             self.saveWeight(self.param_pkl)
@@ -272,7 +271,7 @@ class DBL_model(object):
             elif metric == 1:
                 acc = float(np.sum(abs(y-yhat)))/m
             elif metric == 2: 
-                print y.shape,yhat.shape
+                #print y.shape,yhat.shape
                 #print float(np.sum((y-yhat)**2))
                 acc = float(np.sum((y-np.reshape(yhat,y.shape))**2))/m
                 #print "y: ",y
