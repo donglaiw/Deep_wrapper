@@ -338,11 +338,17 @@ class Occ(DataIO):
                 num = num/10
             X = self.loadBin(nn+'x.bin',(289,num)).T
             y = self.loadBin(nn+'y.bin',(81,num)).T
+        elif self.data_id == 9:
+            # test for BSD
+            mat = scipy.io.loadmat(file_path+self.dname)
+            mat = np.asarray(mat['Is'][0][self.im_id]).astype('float32')/255
+            X = self.patchify3(mat,self.ishape[:2])
+            y = None
 
         if self.pre_id==1:
-            X = (X/255-0.5)/0.2
-            if self.data_id ==4 and y != None:
-                y = (y/255-0.5)/0.2
+            if y != None:
+                y = 2*y-1
+
 
         return X, y
 
