@@ -62,7 +62,7 @@ class DataIO(DenseDesignMatrix):
         data = np.empty(shape,dtype='float32')
         cc = 0
         rr = 0
-        print shape
+        #print shape
         while bytes != "":
             # string byte-sequence to float
             num = float(struct.unpack('f',bytes)[0])
@@ -326,14 +326,8 @@ class Occ(DataIO):
             # regression
             mat = scipy.io.loadmat(file_path+self.dname)
             #print file_path+self.dname
-            X = np.asarray(mat['mat_x']).astype('float32').T
-            if which_set != 'test':                
-                y = np.asarray(mat['mat_y']).astype('float32').T
-                #print 'test_y: ',y[:10]
-                #print 'test_y2: ',y[0]
-                #print "data_id 3:",y.shape
-            else:
-                y = None
+            X = (np.asarray(mat['mat_x']).astype('float32').T)/255
+            y = np.asarray(mat['mat_y']).astype('float32').T
         elif self.data_id <=8:
             nn = file_path+self.dname[:-5]
             num = 1000000
