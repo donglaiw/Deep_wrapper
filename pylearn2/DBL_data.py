@@ -329,7 +329,7 @@ class Occ(DataIO):
             y = np.asarray(mat['mat_y']).astype('float32').T
             for fn in self.dname[1:]:
                 mat = scipy.io.loadmat(file_path+fn)
-                X = np.vstack((X,np.asarray(mat['mat_x']).astype('float32').T))/255
+                X = np.vstack((X,np.asarray(mat['mat_x']).astype('float32').T/255))
                 y = np.vstack((y,np.asarray(mat['mat_y']).astype('float32').T))
             print X.shape,y.shape 
 
@@ -344,7 +344,7 @@ class Occ(DataIO):
             y = self.loadBin(nn+'y.bin',(81,num)).T
         elif self.data_id == 9:
             # test for BSD
-            mat = scipy.io.loadmat(file_path+self.dname)
+            mat = scipy.io.loadmat(file_path+self.dname[0])
             mat = np.asarray(mat['Is'][0][self.im_id]).astype('float32')/255
             X = self.patchify3(mat,self.ishape[:2])
             y = None
