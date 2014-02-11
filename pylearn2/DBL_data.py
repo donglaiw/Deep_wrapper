@@ -325,11 +325,13 @@ class Occ(DataIO):
         elif self.data_id ==6:
             # regression
             mat = scipy.io.loadmat(file_path+self.dname[0])
-            X = np.asarray(mat['mat_x']).astype('float32').T/255
+            X = np.asarray(mat['mat_x']).astype('uint8').T
+            #X = np.asarray(mat['mat_x']).astype('float32').T/255
             y = np.asarray(mat['mat_y']).astype('float32').T
             for fn in self.dname[1:]:
                 mat = scipy.io.loadmat(file_path+fn)
-                X = np.vstack((X,np.asarray(mat['mat_x']).astype('float32').T/255))
+                X = np.vstack((X,np.asarray(mat['mat_x']).astype('uint8').T))
+                #X = np.vstack((X,np.asarray(mat['mat_x']).astype('float32').T/255))
                 y = np.vstack((y,np.asarray(mat['mat_y']).astype('float32').T))
             print X.shape,y.shape 
 
