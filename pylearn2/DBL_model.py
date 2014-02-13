@@ -273,10 +273,13 @@ class DBL_model(object):
             elif metric == 2: 
                 #print y.shape,yhat.shape
                 #print float(np.sum((y-yhat)**2))
+                print y[:30]
+                print yhat[:30]
+                print m
                 acc = float(np.sum((y-np.reshape(yhat,y.shape))**2))/m
                 #print "y: ",y
                 #print "yhat: ",yhat
-                print "acc: ",acc
+            print "acc: ",acc
             
         return [[yhat],[acc]]
 
