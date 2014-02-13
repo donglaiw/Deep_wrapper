@@ -367,6 +367,13 @@ class Occ(DataIO):
             X = self.patchify(mat,self.ishape[:2])
             y = None
 
+        elif self.data_id == 12:
+            # test for BSD
+            mat = scipy.io.loadmat(file_path+self.dname[0])
+            mat1 = np.asarray(mat['Iss'][0][self.im_id][0][0]).astype('float32')/255
+            mat2 = np.asarray(mat['Iss'][0][self.im_id][1][0]).astype('float32')/255
+            X = np.vstack((self.patchify3(mat1,self.ishape[:2]),self.patchify3(mat2,self.ishape[:2])))
+            y = None
 
         if self.pre_id==1:
             if y != None:
