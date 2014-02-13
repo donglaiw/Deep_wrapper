@@ -376,9 +376,9 @@ class Occ(DataIO):
             y = None
 
         if self.pre_id==1:
-            if y != None:
-                y = 2*y-1
-
+            y = 2*y-1
+        elif self.pre_id==2:
+            y = self.label_id2arr(y.astype('int'),self.im_id)
 
         return X, y
 
