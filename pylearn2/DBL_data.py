@@ -364,7 +364,10 @@ class Occ(DataIO):
             # test for BSD
             mat = scipy.io.loadmat(file_path+self.dname[0])
             mat = np.asarray(mat[self.pre_id][0][self.im_id]).astype('float32')
-            X = self.patchify(mat,self.ishape[:2])
+            if self.ishape[2]==1:
+                X = self.patchify(mat,self.ishape[:2])
+            else:
+                X = self.patchify3(mat,self.ishape[:2])
             y = None
         elif self.data_id == 12:
             # test for BSD
