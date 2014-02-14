@@ -363,10 +363,9 @@ class Occ(DataIO):
         elif self.data_id == 11:
             # test for BSD
             mat = scipy.io.loadmat(file_path+self.dname[0])
-            mat = np.asarray(mat['pb'][0][self.im_id]).astype('float32')
+            mat = np.asarray(mat[self.pre_id][0][self.im_id]).astype('float32')
             X = self.patchify(mat,self.ishape[:2])
             y = None
-
         elif self.data_id == 12:
             # test for BSD
             mat = scipy.io.loadmat(file_path+self.dname[0])
@@ -379,6 +378,10 @@ class Occ(DataIO):
             y = 2*y-1
         elif self.pre_id==2:
             y = self.label_id2arr(y.astype('int'),self.im_id)
+        elif self.pre_id==3:
+            y[y!=self.im_id]=0
+            y[y==self.im_id]=1
+            y = self.label_id2arr(y.astype('int'),2)
 
         return X, y
 
