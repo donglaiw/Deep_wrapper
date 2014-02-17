@@ -195,12 +195,14 @@ class Denoise(DataIO):
                 for i in self.mat_id:
                     mat = scipy.io.loadmat(file_path+'c_voc_p'+str(i)+'.mat')
                     #print i,mat['pss'].shape
-                    y = np.vstack((y,(np.asarray(mat['pss']).T.astype('float32')/255-0.5)/0.2))
+                    y = np.vstack((y,np.asarray(mat['pss']).T.astype('float32')))
+                    #y = np.vstack((y,(np.asarray(mat['pss']).T.astype('float32')/255-0.5)/0.2))
         elif self.data_id==1:
             # test for one image
             mat = scipy.io.loadmat(file_path+self.dname[0])
             X = (np.asarray(mat['nps']).astype('float32').T/255-0.5)/0.2
-            y = (np.asarray(mat['ps']).astype('float32').T/255-0.5)/0.2
+            y = np.asarray(mat['ps']).astype('float32').T
+            #y = (np.asarray(mat['ps']).astype('float32').T/255-0.5)/0.2
         elif self.data_id==2:
             # test for BSD
             mat = scipy.io.loadmat(file_path+self.dname[0])
@@ -220,6 +222,12 @@ class Denoise(DataIO):
                 tmp_sz = tmp_x.shape
                 y = np.vstack((X,np.reshape(tmp_x,(tmp_sz[0]*tmp_sz[1],tmp_sz[2]*tmp_sz[3]))))
             """
+        if y!=None:
+            if self.pre_id==1:
+                y = (y/255-0.5)/0.2
+            elif self.pre_id==2:
+                y = 2*y/255-1
+ 
         return X, y
 
 class Occ(DataIO):    
